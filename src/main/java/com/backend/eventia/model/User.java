@@ -50,7 +50,7 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
-    private UserRole role = UserRole.CUSTOMER;
+    private UserRole role = UserRole.USER;
 
 
     @CreationTimestamp
