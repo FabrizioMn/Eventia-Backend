@@ -3,6 +3,7 @@ package com.backend.eventia.service.impl;
 import com.backend.eventia.dto.AuthResponseDto;
 import com.backend.eventia.dto.LoginRequestDto;
 import com.backend.eventia.dto.RegisterRequestDto;
+import com.backend.eventia.exception.DuplicateResourceException;
 import com.backend.eventia.model.User;
 import com.backend.eventia.model.enums.UserRole;
 import com.backend.eventia.repository.UserRepository;
@@ -32,8 +33,10 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponseDto login(LoginRequestDto request) {
 
+        String email = request.email().trim().toLowerCase();
+
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.email(), request.password())
+                new UsernamePasswordAuthenticationToken(email, request.password())
         );
 
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
@@ -45,23 +48,24 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public AuthResponseDto register(RegisterRequestDto request) {
 
+        String email = request.email().trim().toLowerCase();
+
         // Verificar si el email ya existe
-        if (userRepository.existsByEmail(request.email())) {
-            throw new IllegalArgumentException("El email ya esta registrado");
+        if (userRepository.existsByEmail(email)) {
+            throw new DuplicateResourceException("El email ya esta registrado");
         }
 
         // Verificar si el dni ya existe
-        // Verificar si el DNI ya existe
         if (userRepository.existsByDni(request.dni())) {
-            throw new IllegalArgumentException("El DNI ya esta registrado");
+            throw new DuplicateResourceException("El DNI ya esta registrado");
         }
 
-        // Crearmos el usuario
+        // Creamos el usuario
         User user = User.builder()
                 .firstName(request.firstName())
                 .lastName(request.lastName())
                 .dni(request.dni())
-                .email(request.email())
+                .email(email)
                 .password(passwordEncoder.encode(request.password()))
                 .role(UserRole.USER)
                 .build();
