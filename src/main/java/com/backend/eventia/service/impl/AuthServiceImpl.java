@@ -46,8 +46,14 @@ public class AuthServiceImpl implements AuthService {
     public AuthResponseDto register(RegisterRequestDto request) {
 
         // Verificar si el email ya existe
-        if (userRepository.findByEmail(request.email()).isPresent()) {
+        if (userRepository.existsByEmail(request.email())) {
             throw new IllegalArgumentException("El email ya esta registrado");
+        }
+
+        // Verificar si el dni ya existe
+        // Verificar si el DNI ya existe
+        if (userRepository.existsByDni(request.dni())) {
+            throw new IllegalArgumentException("El DNI ya esta registrado");
         }
 
         // Crearmos el usuario
