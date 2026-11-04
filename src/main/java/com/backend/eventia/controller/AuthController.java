@@ -4,6 +4,7 @@ import com.backend.eventia.dto.AuthResponseDto;
 import com.backend.eventia.dto.LoginRequestDto;
 import com.backend.eventia.dto.RegisterRequestDto;
 import com.backend.eventia.service.AuthService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,12 +21,12 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponseDto> register(@RequestBody RegisterRequestDto request) {
+    public ResponseEntity<AuthResponseDto> register(@Valid @RequestBody RegisterRequestDto request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponseDto> login(@RequestBody LoginRequestDto request) {
+    public ResponseEntity<AuthResponseDto> login(@Valid @RequestBody LoginRequestDto request) {
         return ResponseEntity.ok(authService.login(request));
     }
 
