@@ -1,8 +1,8 @@
 package com.backend.eventia.service.impl;
 
-import com.backend.eventia.dto.AuthResponseDto;
-import com.backend.eventia.dto.LoginRequestDto;
-import com.backend.eventia.dto.RegisterRequestDto;
+import com.backend.eventia.dto.auth.AuthResponseDto;
+import com.backend.eventia.dto.auth.LoginRequestDto;
+import com.backend.eventia.dto.auth.RegisterRequestDto;
 import com.backend.eventia.exception.DuplicateResourceException;
 import com.backend.eventia.model.User;
 import com.backend.eventia.model.enums.UserRole;

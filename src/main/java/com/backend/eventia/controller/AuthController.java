@@ -1,8 +1,8 @@
 package com.backend.eventia.controller;
 
-import com.backend.eventia.dto.AuthResponseDto;
-import com.backend.eventia.dto.LoginRequestDto;
-import com.backend.eventia.dto.RegisterRequestDto;
+import com.backend.eventia.dto.auth.AuthResponseDto;
+import com.backend.eventia.dto.auth.LoginRequestDto;
+import com.backend.eventia.dto.auth.RegisterRequestDto;
 import com.backend.eventia.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
