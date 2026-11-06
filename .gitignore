@@ -1,5 +1,7 @@
 HELP.md
 target/
+# Base de datos H2 en archivo (se crea sola al arrancar, no se sube a GitHub)
+/data/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/

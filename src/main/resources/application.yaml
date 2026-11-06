@@ -6,6 +6,10 @@ spring:
     name: Eventia
 
   datasource:
+    # BD en ARCHIVO (antes era en memoria y los datos se perdían al apagar el backend).
+    # Al arrancar, Spring crea la carpeta "data" y el archivo eventia.mv.db solo.
+    # Las tablas también las crea solo (ddl-auto: update).
+    url: jdbc:h2:file:./data/eventia
     driver-class-name: org.h2.Driver
     username: sa
     password: ""
