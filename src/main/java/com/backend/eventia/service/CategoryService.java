@@ -7,9 +7,7 @@ import java.util.List;
 
 public interface CategoryService {
 
-    List<CategoryResponseDto> findAll();
-
-    List<CategoryResponseDto> findAllActiveTrue();
+    List<CategoryResponseDto> findAll(boolean includeInactive);
 
     CategoryResponseDto findById(Long id);
 
@@ -17,5 +15,5 @@ public interface CategoryService {
 
     CategoryResponseDto update(Long id, CategoryRequestDto request);
 
-    void deactivate(Long id);
+    void updateStatus(Long id, boolean active);
 }
