@@ -50,6 +50,9 @@ public class Event {
     @Column(nullable = false)
     private Integer capacity;
 
+    @Column(name = "banner_url", length = 500)
+    private String bannerUrl;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
