@@ -11,6 +11,7 @@ import com.backend.eventia.security.JwtUtils;
 import com.backend.eventia.service.AuthService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -19,6 +20,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
@@ -34,6 +36,7 @@ public class AuthServiceImpl implements AuthService {
     public AuthResponseDto login(LoginRequestDto request) {
 
         String email = request.email().trim().toLowerCase();
+        log.info("[Auth] Recibida petición de LOGIN para: {}", email);
 
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(email, request.password())
@@ -41,7 +44,13 @@ public class AuthServiceImpl implements AuthService {
 
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         String token = jwtUtils.generateToken(userDetails);
-        return new AuthResponseDto(token);
+
+        // Buscamos el usuario en la BD para devolver también sus datos al frontend
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        log.info("[Auth] LOGIN exitoso para: {}", email);
+        return new AuthResponseDto(user.getId(), user.getFirstName(), user.getLastName(), user.getEmail(), token);
     }
 
     @Override
@@ -49,14 +58,17 @@ public class AuthServiceImpl implements AuthService {
     public AuthResponseDto register(RegisterRequestDto request) {
 
         String email = request.email().trim().toLowerCase();
+        log.info("[Auth] Recibida petición de REGISTRO para: {}", email);
 
         // Verificar si el email ya existe
         if (userRepository.existsByEmail(email)) {
+            log.warn("[Auth] REGISTRO rechazado: el email ya existe -> {}", email);
             throw new DuplicateResourceException("El email ya esta registrado");
         }
 
         // Verificar si el dni ya existe
         if (userRepository.existsByDni(request.dni())) {
+            log.warn("[Auth] REGISTRO rechazado: el DNI ya existe -> {}", request.dni());
             throw new DuplicateResourceException("El DNI ya esta registrado");
         }
 
@@ -74,6 +86,7 @@ public class AuthServiceImpl implements AuthService {
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
         String token = jwtUtils.generateToken(userDetails);
-        return new AuthResponseDto(token);
+        log.info("[Auth] REGISTRO exitoso para: {} (id={})", email, user.getId());
+        return new AuthResponseDto(user.getId(), user.getFirstName(), user.getLastName(), user.getEmail(), token);
     }
 }
