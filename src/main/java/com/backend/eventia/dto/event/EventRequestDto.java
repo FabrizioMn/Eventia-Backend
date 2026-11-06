@@ -1,5 +1,6 @@
 package com.backend.eventia.dto.event;
 
+import com.backend.eventia.model.enums.EventStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -36,6 +37,10 @@ public record EventRequestDto(
 
         @NotNull(message = "La categoria es obligatoria")
         @Positive(message = "La categoria debe ser valida")
-        Long categoryId
+        Long categoryId,
+
+        @Size(max = 500, message = "La URL del banner no puede superar los 500 caracteres") String bannerUrl,
+
+        EventStatus status
 ) {
 }

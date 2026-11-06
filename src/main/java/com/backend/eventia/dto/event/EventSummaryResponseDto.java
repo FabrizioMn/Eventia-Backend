@@ -11,8 +11,11 @@ public record EventSummaryResponseDto(
         String description,
         LocalDate date,
         LocalTime startTime,
+        LocalTime endTime,
         String location,
+        Integer capacity,
+        String bannerUrl,
         String categoryName,
-        EventStatus status
-) {
+        EventStatus status,
+        boolean active) {
 }

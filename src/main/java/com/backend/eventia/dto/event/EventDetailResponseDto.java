@@ -15,6 +15,7 @@ public record EventDetailResponseDto(
         LocalTime endTime,
         String location,
         Integer capacity,
+        String bannerUrl,
         EventStatus status,
         boolean active,
         Long categoryId,
@@ -22,6 +23,5 @@ public record EventDetailResponseDto(
         Long organizerId,
         String organizerName,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
-) {
+        LocalDateTime updatedAt) {
 }
