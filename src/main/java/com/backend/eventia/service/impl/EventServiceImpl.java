@@ -152,7 +152,7 @@ public class EventServiceImpl implements EventService {
             event.setStatus(request.status());
         }
 
-        eventRepository.save(event);
+        event = eventRepository.saveAndFlush(event);
         log.info("[Event] Evento actualizado id={} título='{}'", event.getId(), event.getTitle());
 
         return toDetailDto(event);
@@ -185,6 +185,8 @@ public class EventServiceImpl implements EventService {
         event.setActive(active);
         if (!active && event.getStatus() != EventStatus.FINISHED) {
             event.setStatus(EventStatus.HIDDEN);
+        } else if (active && event.getStatus() == EventStatus.HIDDEN) {
+            event.setStatus(EventStatus.DRAFT);
         }
 
         eventRepository.save(event);
@@ -248,6 +250,10 @@ public class EventServiceImpl implements EventService {
     }
 
     private void validateSchedule(LocalDate date, LocalTime startTime, LocalTime endTime) {
+        if (date != null && date.isBefore(LocalDate.now())) {
+            log.warn("[Event] Fecha inválida en el pasado: date={}", date);
+            throw new IllegalArgumentException("La fecha del evento no puede ser anterior a la fecha actual");
+        }
         if (!endTime.isAfter(startTime)) {
             log.warn("[Event] Horario inválido: startTime={}, endTime={}", startTime, endTime);
             throw new IllegalArgumentException("La hora de fin debe ser posterior a la hora de inicio");
