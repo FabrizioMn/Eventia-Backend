@@ -4,6 +4,7 @@ import com.backend.eventia.model.Category;
 import com.backend.eventia.model.Event;
 import com.backend.eventia.model.TicketType;
 import com.backend.eventia.model.User;
+import com.backend.eventia.model.enums.EventStatus;
 import com.backend.eventia.model.enums.UserRole;
 import com.backend.eventia.repository.CategoryRepository;
 import com.backend.eventia.repository.EventRepository;
@@ -32,7 +33,7 @@ public class DataInitializer {
     private final PasswordEncoder passwordEncoder;
 
     @Bean
-    CommandLineRunner initUsers() {
+    CommandLineRunner initData() {
         return args -> {
             if (userRepository.findByEmail("admin@eventia.com").isEmpty()) {
                 log.info("[DataInitializer] Creando usuario admin por defecto");
@@ -46,23 +47,51 @@ public class DataInitializer {
                         .role(UserRole.ADMIN)
                         .build());
             }
-            // Datos de ejemplo para que el catálogo (GET /events) no se vea vacío.
-            // Solo se crean si la tabla de eventos está vacía.
+
+            if (userRepository.findByEmail("organizador@eventia.com").isEmpty()) {
+                userRepository.save(User.builder()
+                        .firstName("Carlos")
+                        .lastName("Organizador")
+                        .dni("20000002")
+                        .email("organizador@eventia.com")
+                        .cellphone("987654321")
+                        .password(passwordEncoder.encode("organizer123"))
+                        .role(UserRole.ORGANIZER)
+                        .build());
+            }
+
+            seedCategories();
+
             if (eventRepository.count() == 0) {
-                log.info("[DataInitializer] Creando categorías y eventos de ejemplo");
+                log.info("[DataInitializer] Creando eventos y tipos de entrada de ejemplo");
                 seedCatalog();
             }
         };
     }
 
-    private void seedCatalog() {
-        User organizer = userRepository.findByEmail("admin@eventia.com").orElseThrow();
+    private void seedCategories() {
+        List<String[]> initialCategories = List.of(
+                new String[] { "Conciertos", "Presentaciones musicales en vivo, festivales y recitales." },
+                new String[] { "Festivales", "Grandes encuentros artísticos, gastronómicos y temáticos." },
+                new String[] { "Teatro & Artes", "Obras teatrales, comedia, artes escénicas y musicales." },
+                new String[] { "Tecnología & Startups",
+                        "Conferencias, hackathons, foros tecnológicos y networking." },
+                new String[] { "Gastronomía & Ferias",
+                        "Ferias culinarias representativas y catas gastronómicas." });
 
-        Category conciertos = saveCategory("Conciertos", "Shows musicales en vivo");
-        Category festivales = saveCategory("Festivales", "Festivales de varios días y artistas");
-        Category teatro = saveCategory("Teatro & Artes", "Obras de teatro y espectáculos culturales");
-        Category gastronomia = saveCategory("Gastronomía & Ferias", "Ferias gastronómicas y food trucks");
-        Category tecnologia = saveCategory("Tecnología & Startups", "Conferencias y ferias de tecnología");
+        for (String[] category : initialCategories) {
+            getOrCreateCategory(category[0], category[1]);
+        }
+    }
+
+    private void seedCatalog() {
+        User organizer = userRepository.findByEmail("organizador@eventia.com").orElseThrow();
+
+        Category conciertos = getOrCreateCategory("Conciertos", "Presentaciones musicales en vivo, festivales y recitales.");
+        Category festivales = getOrCreateCategory("Festivales", "Grandes encuentros artísticos, gastronómicos y temáticos.");
+        Category teatro = getOrCreateCategory("Teatro & Artes", "Obras teatrales, comedia, artes escénicas y musicales.");
+        Category gastronomia = getOrCreateCategory("Gastronomía & Ferias", "Ferias culinarias representativas y catas gastronómicas.");
+        Category tecnologia = getOrCreateCategory("Tecnología & Startups", "Conferencias, hackathons, foros tecnológicos y networking.");
 
         saveEvent("Illapu: 50 Años de Memoria", "Concierto por los 50 años de Illapu",
                 LocalDate.of(2026, 11, 22), "Estadio Nacional, Lima", 45000, conciertos, organizer, 120.0);
@@ -77,12 +106,18 @@ public class DataInitializer {
         saveEvent("Peru Tech Summit & Fintech 2025", "Cumbre de tecnología y fintech",
                 LocalDate.of(2027, 1, 25), "Centro de Convenciones 27 de Enero", 3000, tecnologia, organizer, 210.0);
 
-        log.info("[DataInitializer] Datos de ejemplo creados correctamente");
+        log.info("[DataInitializer] Eventos de ejemplo creados correctamente");
     }
 
-    private Category saveCategory(String name, String description) {
-        return categoryRepository.save(Category.builder()
-                .name(name).description(description).active(true).build());
+    private Category getOrCreateCategory(String name, String description) {
+        return categoryRepository.findAll().stream()
+                .filter(category -> category.getName().equalsIgnoreCase(name))
+                .findFirst()
+                .orElseGet(() -> categoryRepository.save(Category.builder()
+                        .name(name)
+                        .description(description)
+                        .active(true)
+                        .build()));
     }
 
     private void saveEvent(String title, String description, LocalDate date, String location,
@@ -95,7 +130,7 @@ public class DataInitializer {
                 .endTime(LocalTime.of(23, 0))
                 .location(location)
                 .capacity(capacity)
-                .status("published")
+                .status(EventStatus.PUBLISHED)
                 .active(true)
                 .category(category)
                 .organizer(organizer)
