@@ -41,7 +41,7 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<AuthUserResponseDto> me(Authentication authentication) {
         String email = authentication.getName();
-        log.info("[AuthController] GET /auth/me recibido (email={})", email);
+        log.info("[AuthController] GET /auth/me - usuario autenticado identificado mediante Authentication: {}", email);
         return ResponseEntity.ok(authService.getCurrentUser(email));
     }
 
