@@ -35,6 +35,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(http -> {
                     //Configurar endpoints publicos
                     http.requestMatchers("/auth/login", "/auth/register").permitAll();
+                    // El catálogo es público: no necesita token
+                    http.requestMatchers("/events", "/events/**").permitAll();
                     http.requestMatchers("/h2-console/**").permitAll();
                     http.requestMatchers("/error").permitAll();
                     //Configurar endpoints restantes no especificados
