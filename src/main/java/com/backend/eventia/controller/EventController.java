@@ -27,13 +27,12 @@ public class EventController {
 
     @GetMapping
     public ResponseEntity<Page<EventSummaryResponseDto>> findAll(
-            @RequestParam(required = false, defaultValue = "false") boolean includeInactive,
             @PageableDefault(size = 10, sort = "date", direction = Sort.Direction.ASC) Pageable pageable
     ) {
-        log.debug("[EventController] GET /api/events - Listando eventos paginados (includeInactive={}, page={}, size={})",
-                includeInactive, pageable.getPageNumber(), pageable.getPageSize());
+        log.debug("[EventController] GET /api/events - Listando catálogo público de eventos (page={}, size={})",
+                pageable.getPageNumber(), pageable.getPageSize());
 
-        Page<EventSummaryResponseDto> events = eventService.findAll(includeInactive, pageable);
+        Page<EventSummaryResponseDto> events = eventService.findAll(false, pageable);
         return ResponseEntity.ok(events);
     }
 

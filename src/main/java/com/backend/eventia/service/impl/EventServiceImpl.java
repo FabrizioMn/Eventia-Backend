@@ -19,6 +19,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,11 +42,12 @@ public class EventServiceImpl implements EventService {
         log.debug("[Event] findAll(includeInactive={}, page={}, size={})",
                 includeInactive, pageable.getPageNumber(), pageable.getPageSize());
 
+        // Para el catálogo general, solo se listan eventos activos y publicados
         Page<Event> events = includeInactive
                 ? eventRepository.findAll(pageable)
-                : eventRepository.findByActiveTrue(pageable);
+                : eventRepository.findByActiveTrueAndStatus(EventStatus.PUBLISHED, pageable);
 
-        log.debug("[Event] findAll -> {} eventos encontrados en página {}", events.getNumberOfElements(), pageable.getPageNumber());
+        log.debug("[Event] findAll -> {} eventos publicados encontrados en página {}", events.getNumberOfElements(), pageable.getPageNumber());
         return events.map(this::toSummaryDto);
     }
 
@@ -68,7 +71,14 @@ public class EventServiceImpl implements EventService {
     @Transactional(readOnly = true)
     public EventDetailResponseDto findById(Long id) {
         log.debug("[Event] Buscando evento id={}", id);
-        return toDetailDto(getEventOrThrow(id));
+        Event event = getEventOrThrow(id);
+
+        if ((!event.isActive() || event.getStatus() != EventStatus.PUBLISHED) && !isAuthorizedToViewUnpublished(event)) {
+            log.warn("[Event] Intento no autorizado de consultar evento no publicado o inactivo id={}", id);
+            throw new ResourceNotFoundException("No se encontró el evento con el id: " + id);
+        }
+
+        return toDetailDto(event);
     }
 
     @Override
@@ -83,7 +93,11 @@ public class EventServiceImpl implements EventService {
         validateSchedule(request.date(), request.startTime(), request.endTime());
         ensureTitleIsAvailable(title, organizer.getId(), null);
 
-        EventStatus initialStatus = request.status() != null ? request.status() : EventStatus.PENDING;
+        // Por defecto se crea en DRAFT si no se especifica; se previenen estados administrativos finales
+        EventStatus initialStatus = request.status() != null ? request.status() : EventStatus.DRAFT;
+        if (initialStatus == EventStatus.CANCELLED || initialStatus == EventStatus.FINISHED) {
+            initialStatus = EventStatus.DRAFT;
+        }
 
         Event event = Event.builder()
                 .title(title)
@@ -93,7 +107,7 @@ public class EventServiceImpl implements EventService {
                 .endTime(request.endTime())
                 .location(request.location())
                 .capacity(request.capacity())
-                .bannerUrl(request.bannerUrl())
+                .bannerUrl(request.bannerUrl() != null && !request.bannerUrl().isBlank() ? request.bannerUrl().trim() : null)
                 .status(initialStatus)
                 .active(true)
                 .category(category)
@@ -131,7 +145,8 @@ public class EventServiceImpl implements EventService {
         event.setCategory(category);
 
         if (request.bannerUrl() != null) {
-            event.setBannerUrl(request.bannerUrl());
+            String banner = request.bannerUrl().trim();
+            event.setBannerUrl(banner.isEmpty() ? null : banner);
         }
         if (request.status() != null) {
             event.setStatus(request.status());
@@ -189,11 +204,18 @@ public class EventServiceImpl implements EventService {
     }
 
     private Category getCategoryOrThrow(Long categoryId) {
-        return categoryRepository.findById(categoryId)
+        Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> {
                     log.warn("[Event] Categoría id={} no encontrada", categoryId);
                     return new ResourceNotFoundException("No se encontró la categoría con el id: " + categoryId);
                 });
+
+        if (!category.isActive()) {
+            log.warn("[Event] Rechazado: la categoría id={} '{}' está inactiva", categoryId, category.getName());
+            throw new IllegalArgumentException("La categoría '" + category.getName() + "' está inactiva y no puede ser asignada a eventos.");
+        }
+
+        return category;
     }
 
     private User getUserOrThrow(String email) {
@@ -202,6 +224,17 @@ public class EventServiceImpl implements EventService {
                     log.warn("[Event] Usuario email='{}' no encontrado", email);
                     return new ResourceNotFoundException("No se encontró el usuario con el email: " + email);
                 });
+    }
+
+    private boolean isAuthorizedToViewUnpublished(Event event) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getName())) {
+            return false;
+        }
+
+        return userRepository.findByEmail(auth.getName())
+                .map(u -> u.getRole() == UserRole.ADMIN || event.getOrganizer().getId().equals(u.getId()))
+                .orElse(false);
     }
 
     private void validateOwnership(Event event, User user) {
@@ -215,7 +248,7 @@ public class EventServiceImpl implements EventService {
     }
 
     private void validateSchedule(LocalDate date, LocalTime startTime, LocalTime endTime) {
-        if (endTime.isBefore(startTime) || endTime.equals(startTime)) {
+        if (!endTime.isAfter(startTime)) {
             log.warn("[Event] Horario inválido: startTime={}, endTime={}", startTime, endTime);
             throw new IllegalArgumentException("La hora de fin debe ser posterior a la hora de inicio");
         }
