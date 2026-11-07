@@ -1,5 +1,6 @@
 package com.backend.eventia.model;
 
+import com.backend.eventia.model.enums.EventStatus;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -49,8 +50,13 @@ public class Event {
     @Column(nullable = false)
     private Integer capacity;
 
+    @Column(name = "banner_url", length = 500)
+    private String bannerUrl;
+
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String status;
+    @Builder.Default
+    private EventStatus status = EventStatus.PENDING;
 
     @Column(nullable = false)
     @Builder.Default

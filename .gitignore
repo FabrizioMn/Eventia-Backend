@@ -1,5 +1,7 @@
 HELP.md
 target/
+# Base de datos H2 en archivo
+/data/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
