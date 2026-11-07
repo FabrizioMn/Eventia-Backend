@@ -4,11 +4,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-/**
- * CORS sencillo: permite que el frontend (Vite en http://localhost:5173)
- * llame al backend (http://localhost:8080) desde el navegador.
- * Sin esto, el navegador bloquea las peticiones aunque el backend funcione.
- */
+// Habilita CORS entre el frontend de Vite (5173) y el backend (8080).
 @Configuration
 public class CorsConfig implements WebMvcConfigurer {
 

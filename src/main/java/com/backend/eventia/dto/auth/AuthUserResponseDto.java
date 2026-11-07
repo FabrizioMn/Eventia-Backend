@@ -1,7 +1,6 @@
 package com.backend.eventia.dto.auth;
 
-// Perfil del usuario autenticado. Se obtiene con GET /auth/me a partir
-// del token (Authentication); no forma parte de la respuesta de login.
+// Perfil devuelto por GET /auth/me a partir del JWT.
 public record AuthUserResponseDto(
         Long id,
         String firstName,

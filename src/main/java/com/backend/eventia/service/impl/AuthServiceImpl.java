@@ -58,19 +58,16 @@ public class AuthServiceImpl implements AuthService {
         String email = request.email().trim().toLowerCase();
         log.info("[Auth] Recibida petición de REGISTRO para: {}", email);
 
-        // Verificar si el email ya existe
         if (userRepository.existsByEmail(email)) {
             log.warn("[Auth] REGISTRO rechazado: el email ya existe -> {}", email);
             throw new DuplicateResourceException("El email ya esta registrado");
         }
 
-        // Verificar si el dni ya existe
         if (userRepository.existsByDni(request.dni())) {
             log.warn("[Auth] REGISTRO rechazado: el DNI ya existe -> {}", request.dni());
             throw new DuplicateResourceException("El DNI ya esta registrado");
         }
 
-        // Creamos el usuario
         User user = User.builder()
                 .firstName(request.firstName())
                 .lastName(request.lastName())
@@ -79,7 +76,6 @@ public class AuthServiceImpl implements AuthService {
                 .password(passwordEncoder.encode(request.password()))
                 .role(UserRole.USER)
                 .build();
-        // Guardamos el nuevo usuario en la base de datos
         userRepository.save(user);
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
