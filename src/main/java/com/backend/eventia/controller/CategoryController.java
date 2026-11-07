@@ -5,12 +5,15 @@ import com.backend.eventia.dto.category.CategoryResponseDto;
 import com.backend.eventia.service.CategoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/categories")
 @RequiredArgsConstructor
@@ -20,39 +23,42 @@ public class CategoryController {
 
     @GetMapping
     public ResponseEntity<List<CategoryResponseDto>> findAll(@RequestParam(required = false, defaultValue = "false") boolean includeInactive) {
-        List<CategoryResponseDto> categories = includeInactive
-                ? categoryService.findAll()
-                : categoryService.findAllActiveTrue();
+        log.debug("[CategoryController] GET /api/categories - Listando categorías (includeInactive={})", includeInactive);
+
+        List<CategoryResponseDto> categories = categoryService.findAll(includeInactive);
 
         return ResponseEntity.ok(categories);
     }
 
-
     @GetMapping("/{id}")
     public ResponseEntity<CategoryResponseDto> findById(@PathVariable Long id) {
+        log.debug("[CategoryController] GET /api/categories/{} - Consultando categoría por ID", id);
+
         CategoryResponseDto category = categoryService.findById(id);
         return ResponseEntity.ok(category);
     }
 
     @PostMapping
-    public ResponseEntity<CategoryResponseDto> create(@RequestBody @Valid CategoryRequestDto request) {
+    public ResponseEntity<CategoryResponseDto> create(@RequestBody @Valid CategoryRequestDto request, Authentication authentication) {
+        log.info("[CategoryController] POST /api/categories - Creando nueva categoría con nombre='{}' por usuario='{}'", request.name(), authentication.getName());
+
         CategoryResponseDto createdCategory = categoryService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdCategory);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<CategoryResponseDto> update(
-            @PathVariable Long id,
-            @RequestBody @Valid CategoryRequestDto request) {
+    public ResponseEntity<CategoryResponseDto> update(@PathVariable Long id, @RequestBody @Valid CategoryRequestDto request, Authentication authentication) {
+        log.info("[CategoryController] PUT /api/categories/{} - Actualizando categoría nombre='{}' por usuario='{}'", id, request.name(), authentication.getName());
+
         CategoryResponseDto updatedCategory = categoryService.update(id, request);
         return ResponseEntity.ok(updatedCategory);
     }
 
-    @PatchMapping("/{id}/deactivate")
-    public ResponseEntity<Void> deactivate(@PathVariable Long id) {
-        categoryService.deactivate(id);
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<Void> updateStatus(@PathVariable Long id, @RequestParam boolean active, Authentication authentication) {
+        log.info("[CategoryController] PATCH /api/categories/{}/status - Cambiando estado a active={} por usuario='{}'", id, active, authentication.getName());
+
+        categoryService.updateStatus(id, active);
         return ResponseEntity.noContent().build();
     }
-
-
 }
