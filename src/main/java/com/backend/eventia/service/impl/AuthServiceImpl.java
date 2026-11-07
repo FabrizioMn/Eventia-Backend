@@ -1,15 +1,16 @@
 package com.backend.eventia.service.impl;
 
 import com.backend.eventia.dto.auth.AuthResponseDto;
+import com.backend.eventia.dto.auth.AuthUserResponseDto;
 import com.backend.eventia.dto.auth.LoginRequestDto;
 import com.backend.eventia.dto.auth.RegisterRequestDto;
 import com.backend.eventia.exception.DuplicateResourceException;
+import com.backend.eventia.exception.ResourceNotFoundException;
 import com.backend.eventia.model.User;
 import com.backend.eventia.model.enums.UserRole;
 import com.backend.eventia.repository.UserRepository;
 import com.backend.eventia.security.JwtUtils;
 import com.backend.eventia.service.AuthService;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -19,6 +20,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -45,12 +47,8 @@ public class AuthServiceImpl implements AuthService {
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         String token = jwtUtils.generateToken(userDetails);
 
-        // Buscamos el usuario en la BD para devolver también sus datos al frontend
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
-
         log.info("[Auth] LOGIN exitoso para: {}", email);
-        return new AuthResponseDto(user.getId(), user.getFirstName(), user.getLastName(), user.getEmail(), token);
+        return new AuthResponseDto(token);
     }
 
     @Override
@@ -87,6 +85,25 @@ public class AuthServiceImpl implements AuthService {
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
         String token = jwtUtils.generateToken(userDetails);
         log.info("[Auth] REGISTRO exitoso para: {} (id={})", email, user.getId());
-        return new AuthResponseDto(user.getId(), user.getFirstName(), user.getLastName(), user.getEmail(), token);
+        return new AuthResponseDto(token);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AuthUserResponseDto getCurrentUser(String email) {
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "No se encontro el usuario autenticado con el correo: " + email));
+
+        log.debug("[Auth] Perfil del usuario autenticado consultado: id={} email={}", user.getId(), user.getEmail());
+
+        return new AuthUserResponseDto(
+                user.getId(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getEmail(),
+                user.getRole().name()
+        );
     }
 }
