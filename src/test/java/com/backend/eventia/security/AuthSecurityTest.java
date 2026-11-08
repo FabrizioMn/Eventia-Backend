@@ -5,8 +5,12 @@ import com.backend.eventia.model.enums.UserRole;
 import com.backend.eventia.repository.UserRepository;
 import com.backend.eventia.support.TestUserFactory;
 import com.jayway.jsonpath.JsonPath;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
@@ -15,6 +19,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Date;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -39,6 +45,9 @@ class AuthSecurityTest {
 
     @Autowired
     private JwtUtils jwtUtils;
+
+    @Value("${security.jwt.key-private}")
+    private String jwtKey;
 
     @Test
     void loginCorrectoDevuelveTokenConClaims() throws Exception {
@@ -110,6 +119,21 @@ class AuthSecurityTest {
         userRepository.saveAndFlush(user);
 
         mockMvc.perform(get("/auth/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void tokenExpiradoDevuelve401() throws Exception {
+        String expiredToken = Jwts.builder()
+                .subject("user@test.com")
+                .claim("role", "USER")
+                .claim("userId", 1L)
+                .issuedAt(new Date(System.currentTimeMillis() - 7200000))
+                .expiration(new Date(System.currentTimeMillis() - 3600000))
+                .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtKey)))
+                .compact();
+
+        mockMvc.perform(get("/auth/me").header("Authorization", "Bearer " + expiredToken))
                 .andExpect(status().isUnauthorized());
     }
 
