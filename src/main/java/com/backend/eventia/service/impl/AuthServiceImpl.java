@@ -47,6 +47,10 @@ public class AuthServiceImpl implements AuthService {
 
         String token = jwtUtils.generateToken(user);
 
+        // Solo con fines académicos: se registra el token completo para la sustentación.
+        log.info("[JWT] Token generado para {} | role={} | userId={} | expira={} | token={}",
+                email, user.getRole().name(), user.getId(),
+                java.time.Instant.now().plusSeconds(jwtUtils.getExpirationInSeconds()), token);
         log.info("[Auth] LOGIN exitoso para: {}", email);
         return buildAuthResponse(token, user);
     }
