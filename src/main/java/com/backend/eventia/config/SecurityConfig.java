@@ -5,6 +5,7 @@ import com.backend.eventia.service.impl.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -20,12 +21,15 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import java.util.Arrays;
+
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final Environment environment;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) {
@@ -39,7 +43,9 @@ public class SecurityConfig {
                     http.requestMatchers("/auth/login", "/auth/register").permitAll();
                     // El catálogo es público: no necesita token
                     http.requestMatchers("/events", "/events/**").permitAll();
-                    http.requestMatchers("/h2-console/**").permitAll();
+                    if (isDevProfileActive()) {
+                        http.requestMatchers("/h2-console/**").permitAll();
+                    }
                     http.requestMatchers("/error").permitAll();
                     //Configurar endpoints restantes no especificados
                     http.anyRequest().authenticated();
@@ -49,6 +55,14 @@ public class SecurityConfig {
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .build();
+    }
+
+    private boolean isDevProfileActive() {
+        String[] activeProfiles = environment.getActiveProfiles();
+        return Arrays.asList(activeProfiles).contains("dev")
+                || (activeProfiles.length == 0
+                && ("dev".equals(environment.getProperty("spring.profiles.default"))
+                || Arrays.asList(environment.getDefaultProfiles()).contains("dev")));
     }
 
 
