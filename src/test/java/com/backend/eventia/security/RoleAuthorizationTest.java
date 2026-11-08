@@ -1,15 +1,11 @@
 package com.backend.eventia.security;
 
-import com.backend.eventia.dto.category.CategoryRequestDto;
-import com.backend.eventia.dto.event.EventRequestDto;
 import com.backend.eventia.model.Category;
 import com.backend.eventia.model.User;
-import com.backend.eventia.model.enums.EventStatus;
 import com.backend.eventia.model.enums.UserRole;
 import com.backend.eventia.repository.CategoryRepository;
 import com.backend.eventia.repository.UserRepository;
 import com.backend.eventia.support.TestUserFactory;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +18,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -36,9 +31,6 @@ class RoleAuthorizationTest {
 
     @Autowired
     private MockMvc mockMvc;
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @Autowired
     private UserRepository userRepository;
@@ -91,9 +83,10 @@ class RoleAuthorizationTest {
 
     @Test
     void userNoPuedeCrearEventosYOrganizerSi() throws Exception {
-        EventRequestDto request = new EventRequestDto("Evento Test", "desc", LocalDate.now().plusDays(10),
-                LocalTime.of(18, 0), LocalTime.of(20, 0), "Lima", 100, category.getId(), null, EventStatus.DRAFT);
-        String body = objectMapper.writeValueAsString(request);
+        String date = LocalDate.now().plusDays(10).toString();
+        String body = "{\"title\":\"Evento Test\",\"description\":\"desc\",\"date\":\"" + date + "\","
+                + "\"startTime\":\"18:00:00\",\"endTime\":\"20:00:00\",\"location\":\"Lima\","
+                + "\"capacity\":100,\"categoryId\":" + category.getId() + ",\"status\":\"DRAFT\"}";
 
         mockMvc.perform(post("/api/events").header("Authorization", bearer(userToken))
                         .contentType(MediaType.APPLICATION_JSON).content(body))
@@ -106,16 +99,14 @@ class RoleAuthorizationTest {
 
     @Test
     void organizerNoPuedeCrearCategoriaYAdminSi() throws Exception {
-        CategoryRequestDto request = new CategoryRequestDto("Nueva Cat", "desc");
-
         mockMvc.perform(post("/api/categories").header("Authorization", bearer(organizerToken))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content("{\"name\":\"Nueva Cat\",\"description\":\"desc\"}"))
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(post("/api/categories").header("Authorization", bearer(adminToken))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new CategoryRequestDto("Otra Cat", "desc"))))
+                        .content("{\"name\":\"Otra Cat\",\"description\":\"desc\"}"))
                 .andExpect(status().isCreated());
     }
 
