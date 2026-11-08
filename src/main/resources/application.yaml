@@ -37,3 +37,8 @@ logging:
     com:
       backend:
         eventia: DEBUG
+    # Para la demostración, subir temporalmente a DEBUG:
+    # logging.level.org.springframework.security: DEBUG
+    org:
+      springframework:
+        security: INFO
