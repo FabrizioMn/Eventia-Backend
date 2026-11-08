@@ -6,6 +6,7 @@ import com.backend.eventia.dto.admin.AdminStatusUpdateRequestDto;
 import com.backend.eventia.service.AdminCategoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -22,8 +23,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@Slf4j
 @RestController
-@RequestMapping("/api/v1/admin/categories")
+@RequestMapping("/api/admin/categories")
 @RequiredArgsConstructor
 public class AdminCategoryController {
 
@@ -36,6 +38,7 @@ public class AdminCategoryController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Boolean active
     ) {
+        log.debug("[AdminCategoryController] GET /api/admin/categories - page={} size={}", page, size);
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         return ResponseEntity.ok(adminCategoryService.getCategories(search, active, pageable));
     }
@@ -44,6 +47,7 @@ public class AdminCategoryController {
     public ResponseEntity<AdminCategoryResponseDto> createCategory(
             @Valid @RequestBody AdminCategoryRequestDto request
     ) {
+        log.info("[AdminCategoryController] POST /api/admin/categories - nombre='{}'", request.name());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(adminCategoryService.createCategory(request));
     }
@@ -53,6 +57,7 @@ public class AdminCategoryController {
             @PathVariable Long id,
             @Valid @RequestBody AdminCategoryRequestDto request
     ) {
+        log.info("[AdminCategoryController] PUT /api/admin/categories/{} - nombre='{}'", id, request.name());
         return ResponseEntity.ok(adminCategoryService.updateCategory(id, request));
     }
 
@@ -61,7 +66,7 @@ public class AdminCategoryController {
             @PathVariable Long id,
             @Valid @RequestBody AdminStatusUpdateRequestDto request
     ) {
+        log.info("[AdminCategoryController] PATCH /api/admin/categories/{}/status - active={}", id, request.active());
         return ResponseEntity.ok(adminCategoryService.toggleCategoryStatus(id, Boolean.TRUE.equals(request.active())));
     }
 }
-

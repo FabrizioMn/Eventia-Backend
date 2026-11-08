@@ -7,6 +7,7 @@ import com.backend.eventia.dto.admin.RevenueTimelineResponseDto;
 import com.backend.eventia.dto.admin.TicketFlowResponseDto;
 import com.backend.eventia.service.AdminMonitoringService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,8 +15,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+@Slf4j
 @RestController
-@RequestMapping("/api/v1/admin/monitoring")
+@RequestMapping("/api/admin/monitoring")
 @RequiredArgsConstructor
 public class AdminMonitoringController {
 
@@ -23,6 +25,7 @@ public class AdminMonitoringController {
 
     @GetMapping
     public ResponseEntity<MonitoringDashboardResponseDto> getDashboardData() {
+        log.debug("[AdminMonitoringController] GET /api/admin/monitoring - Consultando metricas del dashboard");
         return ResponseEntity.ok(adminMonitoringService.getDashboardData());
     }
 
@@ -46,4 +49,3 @@ public class AdminMonitoringController {
         return ResponseEntity.ok(adminMonitoringService.getActiveEvents());
     }
 }
-

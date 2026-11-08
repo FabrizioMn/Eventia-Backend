@@ -8,6 +8,7 @@ import com.backend.eventia.model.Category;
 import com.backend.eventia.repository.CategoryRepository;
 import com.backend.eventia.service.AdminCategoryService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Objects;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AdminCategoryServiceImpl implements AdminCategoryService {
@@ -34,6 +36,7 @@ public class AdminCategoryServiceImpl implements AdminCategoryService {
     public AdminCategoryResponseDto createCategory(AdminCategoryRequestDto request) {
         String normalizedName = request.name().trim();
         if (categoryRepository.existsByNameIgnoreCase(normalizedName)) {
+            log.warn("[AdminCategory] Intento de crear categoria duplicada: '{}'", normalizedName);
             throw new DuplicateResourceException("Ya existe una categoría con el nombre: " + normalizedName);
         }
 
@@ -45,6 +48,7 @@ public class AdminCategoryServiceImpl implements AdminCategoryService {
                 .build());
 
         categoryRepository.save(category);
+        log.info("[AdminCategory] Categoria creada id={} nombre='{}'", category.getId(), category.getName());
         return toDto(category);
     }
 
@@ -55,6 +59,7 @@ public class AdminCategoryServiceImpl implements AdminCategoryService {
 
         String normalizedName = request.name().trim();
         if (categoryRepository.existsByNameIgnoreCaseAndIdNot(normalizedName, id)) {
+            log.warn("[AdminCategory] Nombre duplicado al actualizar id={}: '{}'", id, normalizedName);
             throw new DuplicateResourceException("Ya existe otra categoría con el nombre: " + normalizedName);
         }
 
@@ -64,6 +69,7 @@ public class AdminCategoryServiceImpl implements AdminCategoryService {
         category.setActive(Boolean.TRUE.equals(request.active()));
 
         categoryRepository.save(category);
+        log.info("[AdminCategory] Categoria actualizada id={} nombre='{}'", category.getId(), category.getName());
         return toDto(category);
     }
 
@@ -73,12 +79,16 @@ public class AdminCategoryServiceImpl implements AdminCategoryService {
         Category category = findCategoryOrThrow(id);
         category.setActive(active);
         categoryRepository.save(category);
+        log.info("[AdminCategory] Estado actualizado id={} active={}", category.getId(), category.isActive());
         return toDto(category);
     }
 
     private Category findCategoryOrThrow(Long id) {
         return categoryRepository.findById(Objects.requireNonNull(id))
-                .orElseThrow(() -> new ResourceNotFoundException("Categoría no encontrada con id: " + id));
+                .orElseThrow(() -> {
+                    log.warn("[AdminCategory] Categoria no encontrada id={}", id);
+                    return new ResourceNotFoundException("Categoría no encontrada con id: " + id);
+                });
     }
 
     private AdminCategoryResponseDto toDto(Category category) {
@@ -92,4 +102,3 @@ public class AdminCategoryServiceImpl implements AdminCategoryService {
         );
     }
 }
-

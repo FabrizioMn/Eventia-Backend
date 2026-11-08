@@ -19,6 +19,7 @@ import com.backend.eventia.repository.TicketRepository;
 import com.backend.eventia.repository.UserRepository;
 import com.backend.eventia.service.AdminMonitoringService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AdminMonitoringServiceImpl implements AdminMonitoringService {
@@ -44,12 +46,13 @@ public class AdminMonitoringServiceImpl implements AdminMonitoringService {
     @Override
     @Transactional(readOnly = true)
     public MonitoringDashboardResponseDto getDashboardData() {
-        return new MonitoringDashboardResponseDto(
-                getKpis(),
-                getRevenueTimeline(),
-                getTicketFlow(),
-                getActiveEvents()
-        );
+        DashboardKpiResponseDto kpis = getKpis();
+        List<RevenueTimelineResponseDto> revenueTimeline = getRevenueTimeline();
+        List<TicketFlowResponseDto> ticketFlow = getTicketFlow();
+        List<ActiveEventResponseDto> activeEvents = getActiveEvents();
+
+        log.debug("[AdminMonitoring] Dashboard generado: eventosActivos={}", activeEvents.size());
+        return new MonitoringDashboardResponseDto(kpis, revenueTimeline, ticketFlow, activeEvents);
     }
 
     @Override
@@ -62,25 +65,21 @@ public class AdminMonitoringServiceImpl implements AdminMonitoringService {
         LocalDateTime nextStart = currentMonth.plusMonths(1).atDay(1).atStartOfDay();
         LocalDateTime previousStart = previousMonth.atDay(1).atStartOfDay();
 
-        // 1. Ingresos Totales (Fuente: Orders.total_amount)
         double totalRevenue = orderRepository.sumTotalRevenue();
         double currentMonthRevenue = orderRepository.sumTotalRevenueBetween(currentStart, nextStart);
         double previousMonthRevenue = orderRepository.sumTotalRevenueBetween(previousStart, currentStart);
         KpiMetricDto revenueKpi = buildKpiMetric(totalRevenue, currentMonthRevenue, previousMonthRevenue);
 
-        // 2. Órdenes Procesadas (Fuente: Orders.id)
         long totalOrders = orderRepository.count();
         long currentMonthOrders = orderRepository.countByCreatedAtBetween(currentStart, nextStart);
         long previousMonthOrders = orderRepository.countByCreatedAtBetween(previousStart, currentStart);
         KpiMetricDto ordersKpi = buildKpiMetric(totalOrders, currentMonthOrders, previousMonthOrders);
 
-        // 3. Tickets Emitidos (Fuente: Tickets.id)
         long totalTickets = ticketRepository.count();
         long currentMonthTickets = ticketRepository.countByCreatedAtBetween(currentStart, nextStart);
         long previousMonthTickets = ticketRepository.countByCreatedAtBetween(previousStart, currentStart);
         KpiMetricDto ticketsKpi = buildKpiMetric(totalTickets, currentMonthTickets, previousMonthTickets);
 
-        // 4. Organizadores Activos (Fuente: Users.role = ORGANIZER and active = true)
         long totalActiveOrganizers = userRepository.countByRoleAndActiveTrue(UserRole.ORGANIZER);
         long currentMonthOrganizers = userRepository.countByRoleAndActiveTrueAndCreatedAtBetween(
                 UserRole.ORGANIZER, currentStart, nextStart);

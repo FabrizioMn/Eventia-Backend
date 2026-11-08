@@ -10,6 +10,7 @@ import com.backend.eventia.model.enums.UserRole;
 import com.backend.eventia.repository.UserRepository;
 import com.backend.eventia.service.AdminUserService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Objects;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AdminUserServiceImpl implements AdminUserService {
@@ -40,9 +42,11 @@ public class AdminUserServiceImpl implements AdminUserService {
         String normalizedDni = request.dni().trim();
 
         if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
+            log.warn("[AdminUser] Correo duplicado al registrar organizador: {}", normalizedEmail);
             throw new DuplicateResourceException("Ya existe un usuario registrado con el correo: " + normalizedEmail);
         }
         if (userRepository.existsByDni(normalizedDni)) {
+            log.warn("[AdminUser] DNI duplicado al registrar organizador: {}", normalizedDni);
             throw new DuplicateResourceException("Ya existe un usuario registrado con el DNI: " + normalizedDni);
         }
 
@@ -59,6 +63,7 @@ public class AdminUserServiceImpl implements AdminUserService {
                 .build());
 
         userRepository.save(organizer);
+        log.info("[AdminUser] Organizador creado id={} email='{}'", organizer.getId(), organizer.getEmail());
         return toDto(organizer);
     }
 
@@ -71,9 +76,11 @@ public class AdminUserServiceImpl implements AdminUserService {
         String normalizedDni = request.dni().trim();
 
         if (userRepository.existsByEmailIgnoreCaseAndIdNot(normalizedEmail, id)) {
+            log.warn("[AdminUser] Correo en uso al actualizar organizador id={}: {}", id, normalizedEmail);
             throw new DuplicateResourceException("Ya existe otro usuario con el correo: " + normalizedEmail);
         }
         if (userRepository.existsByDniAndIdNot(normalizedDni, id)) {
+            log.warn("[AdminUser] DNI en uso al actualizar organizador id={}: {}", id, normalizedDni);
             throw new DuplicateResourceException("Ya existe otro usuario con el DNI: " + normalizedDni);
         }
 
@@ -85,6 +92,7 @@ public class AdminUserServiceImpl implements AdminUserService {
         organizer.setCellphone(cellphone != null ? cellphone.trim() : null);
 
         userRepository.save(organizer);
+        log.info("[AdminUser] Organizador actualizado id={} email='{}'", organizer.getId(), organizer.getEmail());
         return toDto(organizer);
     }
 
@@ -94,12 +102,16 @@ public class AdminUserServiceImpl implements AdminUserService {
         User organizer = findOrganizerOrThrow(id);
         organizer.setActive(active);
         userRepository.save(organizer);
+        log.info("[AdminUser] Estado de organizador actualizado id={} active={}", organizer.getId(), organizer.isActive());
         return toDto(organizer);
     }
 
     private User findOrganizerOrThrow(Long id) {
         return userRepository.findByIdAndRole(Objects.requireNonNull(id), UserRole.ORGANIZER)
-                .orElseThrow(() -> new ResourceNotFoundException("Organizador no encontrado con id: " + id));
+                .orElseThrow(() -> {
+                    log.warn("[AdminUser] Organizador no encontrado id={}", id);
+                    return new ResourceNotFoundException("Organizador no encontrado con id: " + id);
+                });
     }
 
     private AdminUserResponseDto toDto(User user) {
@@ -117,4 +129,3 @@ public class AdminUserServiceImpl implements AdminUserService {
         );
     }
 }
-
