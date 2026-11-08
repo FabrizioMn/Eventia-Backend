@@ -4,9 +4,12 @@ import com.backend.eventia.exception.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
@@ -14,6 +17,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAccessDeniedHandler implements AccessDeniedHandler {
@@ -24,6 +28,13 @@ public class JwtAccessDeniedHandler implements AccessDeniedHandler {
     public void handle(HttpServletRequest request,
                        HttpServletResponse response,
                        AccessDeniedException accessDeniedException) throws IOException {
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        log.warn("[HTTP 403] {} | usuario={} | roles={} | motivo={}",
+                SecurityLogUtils.requestLine(request),
+                SecurityLogUtils.username(authentication),
+                SecurityLogUtils.roles(authentication),
+                accessDeniedException.getMessage());
 
         ErrorResponse error = new ErrorResponse(
                 HttpStatus.FORBIDDEN.value(),

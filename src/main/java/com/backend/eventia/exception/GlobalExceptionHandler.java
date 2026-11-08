@@ -1,5 +1,6 @@
 package com.backend.eventia.exception;
 
+import com.backend.eventia.security.SecurityLogUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -12,7 +13,9 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -51,6 +54,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        log.warn("[HTTP 403] {} | usuario={} | roles={} | motivo={}",
+                SecurityLogUtils.requestLine(request),
+                SecurityLogUtils.username(authentication),
+                SecurityLogUtils.roles(authentication),
+                ex.getMessage());
         return build(HttpStatus.FORBIDDEN, "Acceso denegado", request, null);
     }
 
