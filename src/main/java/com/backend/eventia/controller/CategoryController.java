@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,6 +40,7 @@ public class CategoryController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CategoryResponseDto> create(@RequestBody @Valid CategoryRequestDto request, Authentication authentication) {
         log.info("[CategoryController] POST /api/categories - Creando nueva categoría con nombre='{}' por usuario='{}'", request.name(), authentication.getName());
 
@@ -47,6 +49,7 @@ public class CategoryController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CategoryResponseDto> update(@PathVariable Long id, @RequestBody @Valid CategoryRequestDto request, Authentication authentication) {
         log.info("[CategoryController] PUT /api/categories/{} - Actualizando categoría nombre='{}' por usuario='{}'", id, request.name(), authentication.getName());
 
@@ -55,6 +58,7 @@ public class CategoryController {
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> updateStatus(@PathVariable Long id, @RequestParam boolean active, Authentication authentication) {
         log.info("[CategoryController] PATCH /api/categories/{}/status - Cambiando estado a active={} por usuario='{}'", id, active, authentication.getName());
 

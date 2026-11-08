@@ -5,6 +5,7 @@ import com.backend.eventia.service.OrganizerDashboardService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/organizer/dashboard")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ORGANIZER')")
 public class OrganizerDashboardController {
 
     private final OrganizerDashboardService organizerDashboardService;
