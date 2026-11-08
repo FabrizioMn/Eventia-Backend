@@ -195,7 +195,7 @@ public class EventServiceImpl implements EventService {
                 ? (event.getOrganizer().getFirstName() + " " + event.getOrganizer().getLastName()).trim()
                 : null;
         return new EventResponseDto(
-                event.getId(),
+                event.getId() != null ? String.valueOf(event.getId()) : null,
                 event.getTitle(),
                 event.getDescription(),
                 event.getDate(),
@@ -208,7 +208,7 @@ public class EventServiceImpl implements EventService {
                 event.getStatus(),
                 event.isActive(),
                 event.getInactivationReason(),
-                event.getCategory() != null ? event.getCategory().getId() : null,
+                event.getCategory() != null ? String.valueOf(event.getCategory().getId()) : null,
                 event.getCategory() != null ? event.getCategory().getName() : null,
                 event.getOrganizer() != null ? event.getOrganizer().getId() : null,
                 organizerName,
