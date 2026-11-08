@@ -24,7 +24,8 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con el correo " + email));
 
-        // Convertir los roles del usuario a GrantedAuthority
+        // La autoridad efectiva se obtiene de la BD en cada autenticación.
+        // No se confía en el claim "role" del JWT para autorizar.
         List<SimpleGrantedAuthority> authorities = List.of(
                 new SimpleGrantedAuthority("ROLE_" + user.getRole())
         );

@@ -1,5 +1,6 @@
 package com.backend.eventia.security;
 
+import com.backend.eventia.model.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -42,9 +43,14 @@ public class JwtUtils {
     }
 
 
-    public String generateToken(UserDetails userDetails) {
+    public String generateToken(User user) {
+        // El claim "role" es informativo para el cliente. La autoridad efectiva
+        // se carga desde la BD en UserDetailsServiceImpl y no se toma de este claim.
         return Jwts.builder()
-                .subject(userDetails.getUsername())
+                .subject(user.getEmail())
+                .claim("role", user.getRole().name())
+                .claim("userId", user.getId())
+                .claim("name", user.getFirstName() + " " + user.getLastName())
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getSigningKey())

@@ -15,9 +15,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,7 +28,6 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
-    private final UserDetailsService userDetailsService;
 
 
     @Override
@@ -40,12 +36,15 @@ public class AuthServiceImpl implements AuthService {
         String email = request.email().trim().toLowerCase();
         log.info("[Auth] Recibida petición de LOGIN para: {}", email);
 
-        Authentication authentication = authenticationManager.authenticate(
+        authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(email, request.password())
         );
 
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        String token = jwtUtils.generateToken(userDetails);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "No se encontro el usuario autenticado con el correo: " + email));
+
+        String token = jwtUtils.generateToken(user);
 
         log.info("[Auth] LOGIN exitoso para: {}", email);
         return new AuthResponseDto(token);
@@ -78,8 +77,7 @@ public class AuthServiceImpl implements AuthService {
                 .build();
         userRepository.save(user);
 
-        UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
-        String token = jwtUtils.generateToken(userDetails);
+        String token = jwtUtils.generateToken(user);
         log.info("[Auth] REGISTRO exitoso para: {} (id={})", email, user.getId());
         return new AuthResponseDto(token);
     }
