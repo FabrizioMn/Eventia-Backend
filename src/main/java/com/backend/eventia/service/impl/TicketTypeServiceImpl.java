@@ -2,6 +2,7 @@ package com.backend.eventia.service.impl;
 
 import com.backend.eventia.dto.tickettype.TicketTypeRequestDto;
 import com.backend.eventia.dto.tickettype.TicketTypeResponseDto;
+import com.backend.eventia.exception.ConflictException;
 import com.backend.eventia.exception.DuplicateResourceException;
 import com.backend.eventia.exception.ResourceNotFoundException;
 import com.backend.eventia.model.Event;
@@ -163,7 +164,7 @@ public class TicketTypeServiceImpl implements TicketTypeService {
 
         if (orderDetailRepository.existsByTicketTypeId(id)) {
             log.warn("[TicketType] Eliminación rechazada: la tarifa id={} tiene ventas registradas", id);
-            throw new IllegalStateException("No se puede eliminar la tarifa porque ya cuenta con ventas registradas. En su lugar, desactívela.");
+            throw new ConflictException("No se puede eliminar la tarifa porque ya cuenta con ventas registradas. En su lugar, desactívela.");
         }
 
         ticketTypeRepository.delete(ticketType);
