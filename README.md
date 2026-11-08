@@ -113,6 +113,13 @@ El backend expone servicios REST para ser consumidos por el frontend de Eventia.
 
 La API continúa ampliándose conforme se implementan las funcionalidades de la plataforma.
 
+## 🔧 Variables de entorno
+
+| Variable | Descripción | Requerida |
+| --- | --- | --- |
+| `JWT_SECRET` | Secreto Base64 (mínimo 32 bytes) para firmar JWT. | Sí en `prod` (sin valor por defecto en `application-prod.yaml`); en `dev` usa valor por defecto solo para desarrollo. |
+| `JWT_EXPIRATION_MS` | Expiración del token en milisegundos. | No (default `86400000`). |
+
 ## 🌐 Comunicación con el frontend
 
 El frontend de Eventia consume esta API mediante **Axios**.
