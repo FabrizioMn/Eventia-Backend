@@ -42,6 +42,10 @@ public class JwtUtils {
         }
     }
 
+    public long getExpirationInSeconds() {
+        return expiration / 1000;
+    }
+
 
     public String generateToken(User user) {
         // El claim "role" es informativo para el cliente. La autoridad efectiva

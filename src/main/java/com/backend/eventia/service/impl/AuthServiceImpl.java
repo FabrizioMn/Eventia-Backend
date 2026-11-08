@@ -2,6 +2,7 @@ package com.backend.eventia.service.impl;
 
 import com.backend.eventia.dto.auth.AuthResponseDto;
 import com.backend.eventia.dto.auth.AuthUserResponseDto;
+import com.backend.eventia.dto.auth.AuthUserSummaryDto;
 import com.backend.eventia.dto.auth.LoginRequestDto;
 import com.backend.eventia.dto.auth.RegisterRequestDto;
 import com.backend.eventia.exception.DuplicateResourceException;
@@ -47,7 +48,7 @@ public class AuthServiceImpl implements AuthService {
         String token = jwtUtils.generateToken(user);
 
         log.info("[Auth] LOGIN exitoso para: {}", email);
-        return new AuthResponseDto(token);
+        return buildAuthResponse(token, user);
     }
 
     @Override
@@ -79,7 +80,23 @@ public class AuthServiceImpl implements AuthService {
 
         String token = jwtUtils.generateToken(user);
         log.info("[Auth] REGISTRO exitoso para: {} (id={})", email, user.getId());
-        return new AuthResponseDto(token);
+        return buildAuthResponse(token, user);
+    }
+
+    private AuthResponseDto buildAuthResponse(String token, User user) {
+        AuthUserSummaryDto userDto = new AuthUserSummaryDto(
+                user.getId(),
+                user.getFirstName() + " " + user.getLastName(),
+                user.getEmail(),
+                user.getRole().name()
+        );
+
+        return new AuthResponseDto(
+                token,
+                "Bearer",
+                jwtUtils.getExpirationInSeconds(),
+                userDto
+        );
     }
 
     @Override
