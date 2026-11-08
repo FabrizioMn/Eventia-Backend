@@ -23,8 +23,9 @@ spring:
 
 security:
   jwt:
-    key-private: 964ffdb5e95797ad2be8a036924d97a1df90a004b69e25093959be7d5104601b # <- DATOS DE PRUEBA
-    expiration: 86400000 # <- DATOS DE PRUEBA
+    # Valor por defecto solo para desarrollo. En producción define JWT_SECRET.
+    key-private: ${JWT_SECRET:964ffdb5e95797ad2be8a036924d97a1df90a004b69e25093959be7d5104601b}
+    expiration: ${JWT_EXPIRATION_MS:86400000}
 
 logging:
   level:
