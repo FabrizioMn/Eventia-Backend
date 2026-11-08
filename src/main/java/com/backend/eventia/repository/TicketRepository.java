@@ -10,7 +10,7 @@ import java.util.List;
 
 public interface TicketRepository extends JpaRepository<Ticket, Long> {
 
-    // ───────────────────────────── Admin Module ─────────────────────────────
+    // Consultas del modulo Admin
 
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 

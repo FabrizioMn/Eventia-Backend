@@ -1,5 +1,7 @@
 package com.backend.eventia.dto.admin;
 
+import com.backend.eventia.model.enums.EventStatus;
+
 public record ActiveEventResponseDto(
         Long id,
         String title,
@@ -7,7 +9,7 @@ public record ActiveEventResponseDto(
         String organizerName,
         int ticketsSold,
         int capacity,
-        String status
+        EventStatus status
 ) {
 }
 

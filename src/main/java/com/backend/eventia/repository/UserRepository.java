@@ -19,7 +19,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByEmail(String email);
 
-    // ───────────────────────────── Admin Module ─────────────────────────────
+    // Consultas del modulo Admin
 
     Optional<User> findByIdAndRole(Long id, UserRole role);
 

@@ -16,7 +16,7 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
 
     List<Category> findByActiveTrue(Sort sort);
 
-    // ───────────────────────────── Admin Module ─────────────────────────────
+    // Consultas del modulo Admin
 
     boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
 

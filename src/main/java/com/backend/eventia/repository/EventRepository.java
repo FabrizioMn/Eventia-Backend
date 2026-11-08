@@ -11,7 +11,7 @@ import java.util.List;
 
 public interface EventRepository extends JpaRepository<Event, Long> {
 
-    // ───────────────────────────── Admin Module ─────────────────────────────
+    // Consultas del modulo Admin
 
     @Query("""
             SELECT DISTINCT e FROM Event e

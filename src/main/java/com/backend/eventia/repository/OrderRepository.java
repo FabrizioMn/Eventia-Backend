@@ -10,7 +10,7 @@ import java.util.List;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
-    // ───────────────────────────── Admin Module ─────────────────────────────
+    // Consultas del modulo Admin
 
     @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o")
     double sumTotalRevenue();
