@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -43,15 +44,50 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(http -> {
-                    //Configurar endpoints publicos
+                    // Endpoints públicos
                     http.requestMatchers("/auth/login", "/auth/register").permitAll();
-                    // El catálogo es público: no necesita token
-                    http.requestMatchers("/events", "/events/**").permitAll();
+                    http.requestMatchers(HttpMethod.GET, "/events", "/events/**").permitAll();
                     if (isDevProfileActive()) {
                         http.requestMatchers("/h2-console/**").permitAll();
                     }
                     http.requestMatchers("/error").permitAll();
-                    //Configurar endpoints restantes no especificados
+
+                    // Administración y dashboard del organizador
+                    http.requestMatchers("/api/admin/**").hasRole("ADMIN");
+                    http.requestMatchers("/api/organizer/**").hasRole("ORGANIZER");
+
+                    // Escritura de categorías
+                    http.requestMatchers(HttpMethod.POST, "/api/categories/**").hasRole("ADMIN");
+                    http.requestMatchers(HttpMethod.PUT, "/api/categories/**").hasRole("ADMIN");
+                    http.requestMatchers(HttpMethod.PATCH, "/api/categories/**").hasRole("ADMIN");
+                    http.requestMatchers(HttpMethod.DELETE, "/api/categories/**").hasRole("ADMIN");
+
+                    // Escritura de eventos
+                    http.requestMatchers(HttpMethod.POST, "/api/events").hasAnyRole("ORGANIZER", "ADMIN");
+                    http.requestMatchers(HttpMethod.PUT, "/api/events/**").hasAnyRole("ORGANIZER", "ADMIN");
+                    http.requestMatchers(HttpMethod.PATCH, "/api/events/**").hasAnyRole("ORGANIZER", "ADMIN");
+                    http.requestMatchers(HttpMethod.DELETE, "/api/events/**").hasAnyRole("ORGANIZER", "ADMIN");
+
+                    // Escritura de tipos de entrada
+                    http.requestMatchers(HttpMethod.POST,
+                                    "/api/events/*/ticket-types", "/api/events/*/ticket-types/**")
+                            .hasAnyRole("ORGANIZER", "ADMIN");
+                    http.requestMatchers(HttpMethod.PUT, "/api/events/*/ticket-types/**")
+                            .hasAnyRole("ORGANIZER", "ADMIN");
+                    http.requestMatchers(HttpMethod.PATCH, "/api/events/*/ticket-types/**")
+                            .hasAnyRole("ORGANIZER", "ADMIN");
+                    http.requestMatchers(HttpMethod.DELETE, "/api/events/*/ticket-types/**")
+                            .hasAnyRole("ORGANIZER", "ADMIN");
+                    http.requestMatchers(HttpMethod.POST, "/api/ticket-types/**")
+                            .hasAnyRole("ORGANIZER", "ADMIN");
+                    http.requestMatchers(HttpMethod.PUT, "/api/ticket-types/**")
+                            .hasAnyRole("ORGANIZER", "ADMIN");
+                    http.requestMatchers(HttpMethod.PATCH, "/api/ticket-types/**")
+                            .hasAnyRole("ORGANIZER", "ADMIN");
+                    http.requestMatchers(HttpMethod.DELETE, "/api/ticket-types/**")
+                            .hasAnyRole("ORGANIZER", "ADMIN");
+
+                    // Cualquier otro endpoint requiere autenticación
                     http.anyRequest().authenticated();
                 })
                 .headers(h -> h.frameOptions(f -> f.sameOrigin()))
