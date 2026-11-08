@@ -31,6 +31,8 @@ security:
     expiration: ${JWT_EXPIRATION_MS:86400000}
 
 logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%X{requestId:-}] [%thread] %logger{36} - %msg%n"
   level:
     com:
       backend:
