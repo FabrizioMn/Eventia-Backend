@@ -43,7 +43,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
 
-                if (jwtUtils.isTokenValid(token, userDetails)) {
+                if (!userDetails.isEnabled()) {
+                    SecurityContextHolder.clearContext();
+                    log.warn("[JWT] Usuario desactivado. Se rechaza la autenticación para: {}",
+                            userDetails.getUsername());
+                } else if (!userDetails.isAccountNonLocked()) {
+                    SecurityContextHolder.clearContext();
+                    log.warn("[JWT] Usuario bloqueado. Se rechaza la autenticación para: {}",
+                            userDetails.getUsername());
+                } else if (jwtUtils.isTokenValid(token, userDetails)) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails, null, userDetails.getAuthorities()
                     );
