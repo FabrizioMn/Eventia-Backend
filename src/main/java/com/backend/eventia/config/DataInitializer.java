@@ -14,16 +14,23 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Condition;
+import org.springframework.context.annotation.ConditionContext;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
+import org.springframework.core.type.AnnotatedTypeMetadata;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Arrays;
 import java.util.List;
 
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
+@Conditional(DataInitializer.SeedEnabledCondition.class)
 public class DataInitializer {
 
     private final UserRepository userRepository;
@@ -145,5 +152,22 @@ public class DataInitializer {
                 .active(true)
                 .event(event)
                 .build());
+    }
+
+    public static class SeedEnabledCondition implements Condition {
+
+        @Override
+        public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
+            Environment environment = context.getEnvironment();
+            String[] activeProfiles = environment.getActiveProfiles();
+
+            boolean devProfileActive = Arrays.asList(activeProfiles).contains("dev")
+                    || (activeProfiles.length == 0
+                    && ("dev".equals(environment.getProperty("spring.profiles.default"))
+                    || Arrays.asList(environment.getDefaultProfiles()).contains("dev")));
+
+            return devProfileActive
+                    || environment.getProperty("app.seed.enabled", Boolean.class, false);
+        }
     }
 }

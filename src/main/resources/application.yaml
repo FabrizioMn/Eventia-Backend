@@ -5,6 +5,9 @@ spring:
   application:
     name: Eventia
 
+  profiles:
+    default: dev
+
   datasource:
     # Base de datos H2 en archivo.
     url: jdbc:h2:file:./data/eventia
