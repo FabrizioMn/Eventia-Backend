@@ -3,7 +3,9 @@ package com.backend.eventia.security;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.io.DecodingException;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
@@ -20,6 +22,24 @@ public class JwtUtils {
 
     @Value("${security.jwt.expiration}")
     private long expiration;
+
+    @PostConstruct
+    void validateSecret() {
+        if (key == null || key.isBlank()) {
+            throw new IllegalStateException("JWT_SECRET no está configurado");
+        }
+
+        byte[] keyBytes;
+        try {
+            keyBytes = Decoders.BASE64.decode(key);
+        } catch (DecodingException ex) {
+            throw new IllegalStateException("JWT_SECRET debe estar codificado en Base64", ex);
+        }
+
+        if (keyBytes.length < 32) {
+            throw new IllegalStateException("JWT_SECRET debe tener al menos 32 bytes");
+        }
+    }
 
 
     public String generateToken(UserDetails userDetails) {
