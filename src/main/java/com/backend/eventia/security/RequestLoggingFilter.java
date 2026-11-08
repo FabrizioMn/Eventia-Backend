@@ -36,12 +36,13 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
             long durationMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-            log.info("[HTTP] {} {} -> {} | {} ms | usuario={}",
+            log.info("[HTTP] {} {} -> {} | {} ms | user={} roles={}",
                     request.getMethod(),
                     request.getRequestURI(),
                     response.getStatus(),
                     durationMs,
-                    SecurityLogUtils.username(authentication));
+                    SecurityLogUtils.username(authentication),
+                    SecurityLogUtils.roles(authentication));
 
             MDC.remove(REQUEST_ID_MDC_KEY);
         }

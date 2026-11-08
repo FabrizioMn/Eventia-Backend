@@ -30,7 +30,7 @@ public class JwtAccessDeniedHandler implements AccessDeniedHandler {
                        AccessDeniedException accessDeniedException) throws IOException {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        log.warn("[HTTP 403] {} | usuario={} | roles={} | motivo={}",
+        log.warn("[HTTP 403] ruta denegada={} | usuario={} | roles={} | motivo={}",
                 SecurityLogUtils.requestLine(request),
                 SecurityLogUtils.username(authentication),
                 SecurityLogUtils.roles(authentication),
