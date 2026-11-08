@@ -1,5 +1,6 @@
 package com.backend.eventia.config;
 
+import com.backend.eventia.security.JwtAccessDeniedHandler;
 import com.backend.eventia.security.JwtAuthenticationEntryPoint;
 import com.backend.eventia.security.JwtAuthenticationFilter;
 import com.backend.eventia.service.impl.UserDetailsServiceImpl;
@@ -29,6 +30,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
     private final Environment environment;
 
     @Bean
@@ -53,7 +55,8 @@ public class SecurityConfig {
                 .headers(h -> h.frameOptions(f -> f.sameOrigin()))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint(jwtAuthenticationEntryPoint))
+                        .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                        .accessDeniedHandler(jwtAccessDeniedHandler))
                 .build();
     }
 
