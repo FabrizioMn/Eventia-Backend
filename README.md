@@ -193,6 +193,37 @@ En Linux/macOS:
 ./mvnw clean package
 ```
 
+## Variables de entorno
+
+La configuración sensible se externaliza mediante variables de entorno. En desarrollo existen valores por defecto, pero en producción deben definirse explícitamente.
+
+| **Variable** | **Descripción** | **Valor por defecto** |
+| ------------ | --------------- | --------------------- |
+| `JWT_SECRET` | Clave usada para firmar los JWT. Debe estar codificada en Base64 y representar al menos 32 bytes. La aplicación falla al iniciar si no cumple esta condición. | Valor de desarrollo incluido en `application.yaml` |
+| `JWT_EXPIRATION_MS` | Tiempo de expiración del token en milisegundos. | `86400000` (24 horas) |
+
+Ejemplo en Windows PowerShell:
+
+```powershell
+$env:JWT_SECRET = "<clave-base64-de-al-menos-32-bytes>"
+$env:JWT_EXPIRATION_MS = "86400000"
+.\mvnw.cmd spring-boot:run
+```
+
+Ejemplo en Linux/macOS:
+
+```bash
+export JWT_SECRET="<clave-base64-de-al-menos-32-bytes>"
+export JWT_EXPIRATION_MS="86400000"
+./mvnw spring-boot:run
+```
+
+Para generar una clave de desarrollo compatible:
+
+```bash
+openssl rand -base64 32
+```
+
 ## 🗄️ Base de datos
 
 El proyecto utiliza **H2** durante el desarrollo.
