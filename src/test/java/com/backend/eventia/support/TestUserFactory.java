@@ -12,10 +12,15 @@ public final class TestUserFactory {
 
     public static User createUser(UserRepository userRepository, PasswordEncoder passwordEncoder,
                                   String email, String rawPassword, UserRole role, boolean active) {
+        return createUser(userRepository, passwordEncoder, email, rawPassword, role, active, dniFor(role, active));
+    }
+
+    public static User createUser(UserRepository userRepository, PasswordEncoder passwordEncoder,
+                                  String email, String rawPassword, UserRole role, boolean active, String dni) {
         User user = User.builder()
                 .firstName(role.name())
                 .lastName("Test")
-                .dni(dniFor(role, active))
+                .dni(dni)
                 .email(email)
                 .password(passwordEncoder.encode(rawPassword))
                 .role(role)
