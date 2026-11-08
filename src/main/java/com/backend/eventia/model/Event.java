@@ -1,5 +1,7 @@
 package com.backend.eventia.model;
 
+import com.backend.eventia.model.enums.EventStatus;
+import com.backend.eventia.model.enums.InactivationReason;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -46,15 +48,26 @@ public class Event {
     @Column(nullable = false)
     private String location;
 
+    private String city;
+
     @Column(nullable = false)
     private Integer capacity;
 
-    @Column(nullable = false)
-    private String status;
+    @Column(name = "available_capacity")
+    private Integer availableCapacity;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private EventStatus status = EventStatus.BORRADOR;
 
     @Column(nullable = false)
     @Builder.Default
     private boolean active = true;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "inactivation_reason", length = 30)
+    private InactivationReason inactivationReason;
 
     @CreationTimestamp
     @Column(name = "created_at")

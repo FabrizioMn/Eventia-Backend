@@ -5,11 +5,13 @@ import com.backend.eventia.service.impl.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -21,6 +23,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -33,11 +36,11 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(http -> {
-                    //Configurar endpoints publicos
                     http.requestMatchers("/auth/login", "/auth/register").permitAll();
                     http.requestMatchers("/h2-console/**").permitAll();
                     http.requestMatchers("/error").permitAll();
-                    //Configurar endpoints restantes no especificados
+                    http.requestMatchers("/events/mine", "/events/manage", "/events/manage/**").authenticated();
+                    http.requestMatchers(HttpMethod.GET, "/events", "/events/*").permitAll();
                     http.anyRequest().authenticated();
                 })
                 .headers(h -> h.frameOptions(f -> f.sameOrigin()))
