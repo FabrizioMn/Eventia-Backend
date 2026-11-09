@@ -134,7 +134,8 @@ public class EventServiceImpl implements EventService {
         ensureTitleIsAvailable(newTitle, event.getOrganizer().getId(), event);
 
         Category category = getCategoryOrThrow(request.categoryId());
-        validateSchedule(request.date(), request.startTime(), request.endTime(), false);
+        boolean requireFutureDate = event.isActive() || event.getStatus() == EventStatus.PUBLISHED;
+        validateSchedule(request.date(), request.startTime(), request.endTime(), requireFutureDate);
         validateCapacityForEventUpdate(event, request.capacity());
 
         event.setTitle(newTitle);
