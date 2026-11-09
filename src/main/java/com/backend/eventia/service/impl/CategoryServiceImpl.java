@@ -9,6 +9,8 @@ import com.backend.eventia.repository.CategoryRepository;
 import com.backend.eventia.service.CategoryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,15 +26,21 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<CategoryResponseDto> findAll(boolean includeInactive) {
+    public List<CategoryResponseDto> findAllActive() {
+        List<Category> categories = categoryRepository.findByActiveTrue(Sort.by("name"));
+        log.debug("[Category] findAllActive -> {} categorías activas", categories.size());
+        return categories.stream().map(this::toDto).toList();
+    }
 
-        List<Category> categories = includeInactive
-                ? categoryRepository.findAll(Sort.by("name"))
-                : categoryRepository.findByActiveTrue(Sort.by("name"));
+    @Override
+    @Transactional(readOnly = true)
+    public Page<CategoryResponseDto> search(String search, Boolean active, Pageable pageable) {
+        String normalizedSearch = (search == null || search.isBlank()) ? null : search.trim();
+        log.debug("[Category] search(search='{}', active={}, page={}, size={})",
+                normalizedSearch, active, pageable.getPageNumber(), pageable.getPageSize());
 
-        List<CategoryResponseDto> response = categories.stream().map(this::toDto).toList();
-        log.debug("[Category] findAll(includeInactive={}) -> {} categorías", includeInactive, categories.size());
-        return response;
+        return categoryRepository.searchCategories(normalizedSearch, active, pageable)
+                .map(this::toDto);
     }
 
     @Override
@@ -45,78 +53,69 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     @Transactional
     public CategoryResponseDto create(CategoryRequestDto request) {
-
         String name = normalizeName(request.name());
-        log.info("[Category] Creando categoria '{}'", name);
 
-        ensureNameIsAvailable(name, null);
+        if (categoryRepository.existsByNameIgnoreCase(name)) {
+            log.warn("[Category] Intento de crear categoria duplicada: '{}'", name);
+            throw new DuplicateResourceException("Ya existe una categoría con el nombre: " + name);
+        }
 
-        Category category = toEntity(name, request.description());
+        Category category = Category.builder()
+                .name(name)
+                .description(normalizeDescription(request.description()))
+                .build();
+
         categoryRepository.save(category);
-
-        log.info("[Category] Categoria creada id={} nombre {}", category.getId(), category.getName());
+        log.info("[Category] Categoria creada id={} nombre='{}'", category.getId(), category.getName());
         return toDto(category);
     }
 
     @Override
     @Transactional
     public CategoryResponseDto update(Long id, CategoryRequestDto request) {
-        log.info("[Category] Actualizando categoría id={}", id);
-
         Category category = getCategoryOrThrow(id);
-        String newName = normalizeName(request.name());
+        String name = normalizeName(request.name());
 
-        ensureNameIsAvailable(newName, category);
+        if (categoryRepository.existsByNameIgnoreCaseAndIdNot(name, id)) {
+            log.warn("[Category] Nombre duplicado al actualizar id={}: '{}'", id, name);
+            throw new DuplicateResourceException("Ya existe otra categoría con el nombre: " + name);
+        }
 
-        category.setName(newName);
-        category.setDescription(request.description());
+        category.setName(name);
+        category.setDescription(normalizeDescription(request.description()));
+
         categoryRepository.save(category);
-
-        log.info("[Category] Categoría actualizada id={} nombre='{}'", category.getId(), category.getName());
+        log.info("[Category] Categoria actualizada id={} nombre='{}'", category.getId(), category.getName());
         return toDto(category);
     }
 
     @Override
     @Transactional
-    public void updateStatus(Long id, boolean active) {
-        log.info("[Category] Cambiando estado de categoría id={} a active={}", id, active);
+    public void updateActive(Long id, boolean active) {
         Category category = getCategoryOrThrow(id);
         category.setActive(active);
         categoryRepository.save(category);
-        log.info("[Category] Estado de categoría actualizado id={} active={}", category.getId(), category.isActive());
-    }
-
-
-    // --------
-    // Helpers
-    // --------
-
-    private String normalizeName(String name) {
-        String trimmed = name.trim();
-        if (trimmed.isEmpty()) {
-            throw new IllegalArgumentException("El nombre de la categoria no puede estar vacio");
-        }
-
-        return trimmed.substring(0, 1).toUpperCase() + trimmed.substring(1);
-    }
-
-    private void ensureNameIsAvailable(String name, Category currentCategory) {
-        if (currentCategory != null && currentCategory.getName().equalsIgnoreCase(name)) {
-            return;
-        }
-
-        if (categoryRepository.existsByNameIgnoreCase(name)) {
-            log.warn("[Category] Nombre rechazado: ya existe una categoría con el nombre '{}'", name);
-            throw new DuplicateResourceException("Ya existe una categoría con el mismo nombre");
-        }
+        log.info("[Category] Estado actualizado id={} active={}", category.getId(), category.isActive());
     }
 
     private Category getCategoryOrThrow(Long id) {
         return categoryRepository.findById(id)
                 .orElseThrow(() -> {
                     log.warn("[Category] No se encontro la categoria id={}", id);
-                    return new ResourceNotFoundException("No se encontro la categoria con el id: " + id);
+                    return new ResourceNotFoundException("No se encontró la categoría con el id: " + id);
                 });
+    }
+
+    private String normalizeName(String name) {
+        String trimmed = name.trim();
+        if (trimmed.isEmpty()) {
+            throw new IllegalArgumentException("El nombre de la categoría no puede estar vacío");
+        }
+        return trimmed.substring(0, 1).toUpperCase() + trimmed.substring(1);
+    }
+
+    private String normalizeDescription(String description) {
+        return description == null ? null : description.trim();
     }
 
     private CategoryResponseDto toDto(Category category) {
@@ -124,12 +123,8 @@ public class CategoryServiceImpl implements CategoryService {
                 category.getId(),
                 category.getName(),
                 category.getDescription(),
-                category.isActive());
+                category.isActive(),
+                category.getCreatedAt(),
+                category.getUpdatedAt());
     }
-
-    private Category toEntity(String name, String description) {
-        return Category.builder().name(name).description(description).build();
-    }
-
-
 }

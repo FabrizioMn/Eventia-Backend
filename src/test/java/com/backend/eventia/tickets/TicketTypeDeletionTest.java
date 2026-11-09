@@ -7,6 +7,7 @@ import com.backend.eventia.model.OrderDetail;
 import com.backend.eventia.model.TicketType;
 import com.backend.eventia.model.User;
 import com.backend.eventia.model.enums.EventStatus;
+import com.backend.eventia.model.enums.OrderStatus;
 import com.backend.eventia.model.enums.UserRole;
 import com.backend.eventia.repository.CategoryRepository;
 import com.backend.eventia.repository.EventRepository;
@@ -98,7 +99,7 @@ class TicketTypeDeletionTest {
         Order order = orderRepository.save(Order.builder()
                 .totalAmount(50.0)
                 .paymentMethod("CARD")
-                .paymentStatus("PAGADO")
+                .paymentStatus(OrderStatus.PAID)
                 .user(buyer)
                 .build());
         orderDetailRepository.save(OrderDetail.builder()

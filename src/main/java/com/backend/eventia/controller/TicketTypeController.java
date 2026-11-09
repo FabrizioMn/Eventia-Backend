@@ -6,10 +6,6 @@ import com.backend.eventia.service.TicketTypeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -34,26 +30,6 @@ public class TicketTypeController {
 
         List<TicketTypeResponseDto> tickets = ticketTypeService.findByEvent(eventId, includeInactive);
         return ResponseEntity.ok(tickets);
-    }
-
-    @GetMapping("/api/events/{eventId}/ticket-types/page")
-    public ResponseEntity<Page<TicketTypeResponseDto>> findByEventPaged(
-            @PathVariable Long eventId,
-            @RequestParam(required = false, defaultValue = "false") boolean includeInactive,
-            @PageableDefault(size = 10, sort = "price", direction = Sort.Direction.ASC) Pageable pageable
-    ) {
-        log.debug("[TicketTypeController] GET /api/events/{}/ticket-types/page - Listando tarifas paginadas", eventId);
-
-        Page<TicketTypeResponseDto> page = ticketTypeService.findByEvent(eventId, includeInactive, pageable);
-        return ResponseEntity.ok(page);
-    }
-
-    @GetMapping("/api/ticket-types/{id}")
-    public ResponseEntity<TicketTypeResponseDto> findById(@PathVariable Long id) {
-        log.debug("[TicketTypeController] GET /api/ticket-types/{} - Consultando tarifa por ID", id);
-
-        TicketTypeResponseDto ticket = ticketTypeService.findById(id);
-        return ResponseEntity.ok(ticket);
     }
 
     @PostMapping("/api/events/{eventId}/ticket-types")

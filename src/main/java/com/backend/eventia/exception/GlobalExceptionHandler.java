@@ -1,6 +1,5 @@
 package com.backend.eventia.exception;
 
-import com.backend.eventia.security.SecurityLogUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -10,12 +9,12 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -42,6 +41,18 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, "El cuerpo de la peticion es invalido", request, null);
     }
 
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+        String message = "El parámetro '" + ex.getName() + "' tiene un valor inválido";
+        return build(HttpStatus.BAD_REQUEST, message, request, null);
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponse> handleMissingParameter(MissingServletRequestParameterException ex, HttpServletRequest request) {
+        String message = "Falta el parámetro obligatorio '" + ex.getParameterName() + "'";
+        return build(HttpStatus.BAD_REQUEST, message, request, null);
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request, null);
@@ -49,7 +60,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ErrorResponse> handleIllegalState(IllegalStateException ex, HttpServletRequest request) {
-        log.warn("Estado ilegal: {}", ex.getMessage());
+        log.warn("Conflicto de estado: {}", ex.getMessage());
         return build(HttpStatus.CONFLICT, ex.getMessage(), request, null);
     }
 
@@ -60,12 +71,6 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        log.warn("[HTTP 403] {} | usuario={} | roles={} | motivo={}",
-                SecurityLogUtils.requestLine(request),
-                SecurityLogUtils.username(authentication),
-                SecurityLogUtils.roles(authentication),
-                ex.getMessage());
         return build(HttpStatus.FORBIDDEN, "Acceso denegado", request, null);
     }
 

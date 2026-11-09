@@ -1,5 +1,6 @@
 package com.backend.eventia.model;
 
+import com.backend.eventia.model.enums.TicketStatus;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -25,11 +26,10 @@ public class Ticket {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "qr_code", nullable = false, unique = true)
-    private String qrCode;
-
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String status;
+    @Builder.Default
+    private TicketStatus status = TicketStatus.VALID;
 
     @Column(name = "redeemed_at")
     private LocalDateTime redeemedAt;

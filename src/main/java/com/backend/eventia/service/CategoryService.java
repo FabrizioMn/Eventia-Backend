@@ -2,12 +2,16 @@ package com.backend.eventia.service;
 
 import com.backend.eventia.dto.category.CategoryRequestDto;
 import com.backend.eventia.dto.category.CategoryResponseDto;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
 public interface CategoryService {
 
-    List<CategoryResponseDto> findAll(boolean includeInactive);
+    List<CategoryResponseDto> findAllActive();
+
+    Page<CategoryResponseDto> search(String search, Boolean active, Pageable pageable);
 
     CategoryResponseDto findById(Long id);
 
@@ -15,5 +19,5 @@ public interface CategoryService {
 
     CategoryResponseDto update(Long id, CategoryRequestDto request);
 
-    void updateStatus(Long id, boolean active);
+    void updateActive(Long id, boolean active);
 }

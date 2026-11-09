@@ -49,48 +49,50 @@ public class SecurityConfig {
                 .authorizeHttpRequests(http -> {
                     // Endpoints públicos
                     http.requestMatchers("/auth/login", "/auth/register").permitAll();
-                    http.requestMatchers(HttpMethod.GET, "/events", "/events/**").permitAll();
+                    http.requestMatchers("/error").permitAll();
                     if (isDevProfileActive()) {
                         http.requestMatchers("/h2-console/**").permitAll();
                     }
-                    http.requestMatchers("/error").permitAll();
 
-                    // Administración y dashboard del organizador
-                    http.requestMatchers("/api/admin/**").hasRole("ADMIN");
-                    http.requestMatchers("/api/organizer/**").hasRole("ORGANIZER");
+                    // El catálogo de eventos es publico
+                    http.requestMatchers(HttpMethod.GET, "/api/events/organizer").hasAnyRole("ADMIN", "ORGANIZER");
+                    http.requestMatchers(HttpMethod.GET, "/api/events", "/api/events/*").permitAll();
+                    http.requestMatchers(HttpMethod.GET, "/api/events/*/ticket-types").permitAll();
 
-                    // Escritura de categorías
-                    http.requestMatchers(HttpMethod.POST, "/api/categories/**").hasRole("ADMIN");
-                    http.requestMatchers(HttpMethod.PUT, "/api/categories/**").hasRole("ADMIN");
-                    http.requestMatchers(HttpMethod.PATCH, "/api/categories/**").hasRole("ADMIN");
-                    http.requestMatchers(HttpMethod.DELETE, "/api/categories/**").hasRole("ADMIN");
+                    // Órdenes y tickets del usuario autenticado
+                    http.requestMatchers(HttpMethod.POST, "/api/orders").authenticated();
+                    http.requestMatchers(HttpMethod.GET, "/api/tickets/my").authenticated();
 
                     // Escritura de eventos
-                    http.requestMatchers(HttpMethod.POST, "/api/events").hasAnyRole("ORGANIZER", "ADMIN");
-                    http.requestMatchers(HttpMethod.PUT, "/api/events/**").hasAnyRole("ORGANIZER", "ADMIN");
-                    http.requestMatchers(HttpMethod.PATCH, "/api/events/**").hasAnyRole("ORGANIZER", "ADMIN");
-                    http.requestMatchers(HttpMethod.DELETE, "/api/events/**").hasAnyRole("ORGANIZER", "ADMIN");
+                    http.requestMatchers(HttpMethod.POST, "/api/events")
+                            .hasAnyRole("ADMIN", "ORGANIZER");
 
-                    // Escritura de tipos de entrada
-                    http.requestMatchers(HttpMethod.POST,
-                                    "/api/events/*/ticket-types", "/api/events/*/ticket-types/**")
-                            .hasAnyRole("ORGANIZER", "ADMIN");
-                    http.requestMatchers(HttpMethod.PUT, "/api/events/*/ticket-types/**")
-                            .hasAnyRole("ORGANIZER", "ADMIN");
-                    http.requestMatchers(HttpMethod.PATCH, "/api/events/*/ticket-types/**")
-                            .hasAnyRole("ORGANIZER", "ADMIN");
-                    http.requestMatchers(HttpMethod.DELETE, "/api/events/*/ticket-types/**")
-                            .hasAnyRole("ORGANIZER", "ADMIN");
-                    http.requestMatchers(HttpMethod.POST, "/api/ticket-types/**")
-                            .hasAnyRole("ORGANIZER", "ADMIN");
-                    http.requestMatchers(HttpMethod.PUT, "/api/ticket-types/**")
-                            .hasAnyRole("ORGANIZER", "ADMIN");
-                    http.requestMatchers(HttpMethod.PATCH, "/api/ticket-types/**")
-                            .hasAnyRole("ORGANIZER", "ADMIN");
-                    http.requestMatchers(HttpMethod.DELETE, "/api/ticket-types/**")
-                            .hasAnyRole("ORGANIZER", "ADMIN");
+                    http.requestMatchers(HttpMethod.PUT, "/api/events/*")
+                            .hasAnyRole("ADMIN", "ORGANIZER");
 
-                    // Cualquier otro endpoint requiere autenticación
+                    http.requestMatchers(HttpMethod.PATCH, "/api/events/*/status", "/api/events/*/active")
+                            .hasAnyRole("ADMIN", "ORGANIZER");
+
+                    // Ticket types: lectura pública para eventos publicados, escritura solo ADMIN/ORGANIZER
+                    http.requestMatchers(HttpMethod.POST, "/api/events/*/ticket-types")
+                            .hasAnyRole("ADMIN", "ORGANIZER");
+                    http.requestMatchers(HttpMethod.PUT, "/api/ticket-types/*")
+                            .hasAnyRole("ADMIN", "ORGANIZER");
+                    http.requestMatchers(HttpMethod.PATCH, "/api/ticket-types/*/status")
+                            .hasAnyRole("ADMIN", "ORGANIZER");
+                    http.requestMatchers(HttpMethod.DELETE, "/api/ticket-types/*")
+                            .hasAnyRole("ADMIN", "ORGANIZER");
+
+                    // Categorias: lectura publica, escritura solo ADMIN
+                    http.requestMatchers(HttpMethod.GET, "/api/categories/admin").hasRole("ADMIN");
+                    http.requestMatchers(HttpMethod.GET, "/api/categories", "/api/categories/*").permitAll();
+                    http.requestMatchers(HttpMethod.POST, "/api/categories").hasRole("ADMIN");
+                    http.requestMatchers(HttpMethod.PUT, "/api/categories/*").hasRole("ADMIN");
+                    http.requestMatchers(HttpMethod.PATCH, "/api/categories/*/active").hasRole("ADMIN");
+
+                    // Paneles de control
+                    http.requestMatchers("/api/admin/**").hasRole("ADMIN");
+                    http.requestMatchers("/api/organizer/**").hasAnyRole("ADMIN", "ORGANIZER");
                     http.anyRequest().authenticated();
                 })
                 .headers(h -> h.frameOptions(f -> f.sameOrigin()))

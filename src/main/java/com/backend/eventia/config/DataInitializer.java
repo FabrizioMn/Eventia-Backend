@@ -149,6 +149,7 @@ public class DataInitializer {
                 .price(price)
                 .totalCapacity(capacity)
                 .availableCapacity((int) (capacity * 0.3))
+                .maxPerPurchase(TicketType.DEFAULT_MAX_PER_PURCHASE)
                 .active(true)
                 .event(event)
                 .build());

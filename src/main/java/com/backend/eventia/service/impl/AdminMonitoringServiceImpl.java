@@ -12,6 +12,7 @@ import com.backend.eventia.model.Order;
 import com.backend.eventia.model.Ticket;
 import com.backend.eventia.model.TicketType;
 import com.backend.eventia.model.User;
+import com.backend.eventia.model.enums.OrderStatus;
 import com.backend.eventia.model.enums.UserRole;
 import com.backend.eventia.repository.EventRepository;
 import com.backend.eventia.repository.OrderRepository;
@@ -70,9 +71,11 @@ public class AdminMonitoringServiceImpl implements AdminMonitoringService {
         double previousMonthRevenue = orderRepository.sumTotalRevenueBetween(previousStart, currentStart);
         KpiMetricDto revenueKpi = buildKpiMetric(totalRevenue, currentMonthRevenue, previousMonthRevenue);
 
-        long totalOrders = orderRepository.countPaidOrders();
-        long currentMonthOrders = orderRepository.countPaidOrdersBetween(currentStart, nextStart);
-        long previousMonthOrders = orderRepository.countPaidOrdersBetween(previousStart, currentStart);
+        long totalOrders = orderRepository.countByPaymentStatus(OrderStatus.PAID);
+        long currentMonthOrders = orderRepository.countByPaymentStatusAndCreatedAtBetween(
+                OrderStatus.PAID, currentStart, nextStart);
+        long previousMonthOrders = orderRepository.countByPaymentStatusAndCreatedAtBetween(
+                OrderStatus.PAID, previousStart, currentStart);
         KpiMetricDto ordersKpi = buildKpiMetric(totalOrders, currentMonthOrders, previousMonthOrders);
 
         long totalTickets = ticketRepository.count();
@@ -141,10 +144,6 @@ public class AdminMonitoringServiceImpl implements AdminMonitoringService {
                 LocalDateTime createdAt = ticket.getCreatedAt();
                 if (createdAt != null && YearMonth.from(createdAt).equals(month)) {
                     issued++;
-                }
-                LocalDateTime redeemedAt = ticket.getRedeemedAt();
-                if (redeemedAt != null && YearMonth.from(redeemedAt).equals(month)) {
-                    redeemed++;
                 }
             }
 
@@ -226,8 +225,7 @@ public class AdminMonitoringServiceImpl implements AdminMonitoringService {
     }
 
     private boolean isPaidOrder(Order order) {
-        String status = order.getPaymentStatus();
-        return "PAGADO".equalsIgnoreCase(status) || "COMPLETED".equalsIgnoreCase(status);
+        return order.getPaymentStatus() == OrderStatus.PAID;
     }
 
     private double roundTwoDecimals(double value) {

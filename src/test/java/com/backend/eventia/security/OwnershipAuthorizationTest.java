@@ -83,7 +83,7 @@ class OwnershipAuthorizationTest {
                 .endTime(LocalTime.of(20, 0))
                 .location("Lima")
                 .capacity(100)
-                .status(EventStatus.DRAFT)
+                .status(EventStatus.PENDING)
                 .active(true)
                 .category(category)
                 .organizer(orgB)

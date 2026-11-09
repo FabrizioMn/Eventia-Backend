@@ -148,13 +148,7 @@ class EventAndTicketTypeRulesTest {
     void eventoValidaEstadosEnCreacionYTransicion() throws Exception {
         String futureDate = LocalDate.now().plusDays(10).toString();
 
-        // Crear directamente en CANCELLED -> 400
-        mockMvc.perform(post("/api/events")
-                        .header("Authorization", "Bearer " + tokenOrgA)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(eventJson("Evento Cancelado", futureDate, "18:00:00", "20:00:00", activeCategory.getId(), "CANCELLED")))
-                .andExpect(status().isBadRequest());
-
+        // La creación siempre inicia en PENDING; el DTO no acepta estado del cliente.
         Event cancelledEvent = eventRepository.save(Event.builder()
                 .title("Ya Cancelado")
                 .description("d")
@@ -266,4 +260,3 @@ class EventAndTicketTypeRulesTest {
                 + "\"capacity\":100,\"categoryId\":" + categoryId + ",\"status\":\"" + status + "\"}";
     }
 }
-

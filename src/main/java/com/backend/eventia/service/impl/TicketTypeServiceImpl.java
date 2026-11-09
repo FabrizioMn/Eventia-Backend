@@ -8,6 +8,7 @@ import com.backend.eventia.exception.ResourceNotFoundException;
 import com.backend.eventia.model.Event;
 import com.backend.eventia.model.TicketType;
 import com.backend.eventia.model.User;
+import com.backend.eventia.model.enums.EventStatus;
 import com.backend.eventia.model.enums.UserRole;
 import com.backend.eventia.repository.EventRepository;
 import com.backend.eventia.repository.OrderDetailRepository;
@@ -16,9 +17,9 @@ import com.backend.eventia.repository.UserRepository;
 import com.backend.eventia.service.TicketTypeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,33 +41,25 @@ public class TicketTypeServiceImpl implements TicketTypeService {
     public List<TicketTypeResponseDto> findByEvent(Long eventId, boolean includeInactive) {
         log.debug("[TicketType] findByEvent(eventId={}, includeInactive={})", eventId, includeInactive);
 
+        Event event = getEventOrThrow(eventId);
+        boolean privileged = isAuthorizedToViewInactive(event);
+
+        if (!privileged && (!event.isActive() || event.getStatus() != EventStatus.PUBLISHED)) {
+            log.warn("[TicketType] Intento no autorizado de consultar tarifas de evento no publicado o inactivo id={}", eventId);
+            throw new ResourceNotFoundException("No se encontró el evento con el id: " + eventId);
+        }
+
+        if (includeInactive && !privileged) {
+            log.warn("[TicketType] Acceso denegado: usuario sin permisos intentó ver tarifas inactivas del evento id={}", eventId);
+            throw new AccessDeniedException("No tienes permisos para ver tarifas inactivas de este evento");
+        }
+
         List<TicketType> list = includeInactive
                 ? ticketTypeRepository.findByEventId(eventId)
                 : ticketTypeRepository.findByEventIdAndActiveTrue(eventId);
 
         log.debug("[TicketType] findByEvent -> {} tarifas encontradas", list.size());
         return list.stream().map(this::toDto).toList();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Page<TicketTypeResponseDto> findByEvent(Long eventId, boolean includeInactive, Pageable pageable) {
-        log.debug("[TicketType] findByEvent paginado(eventId={}, includeInactive={}, page={}, size={})",
-                eventId, includeInactive, pageable.getPageNumber(), pageable.getPageSize());
-
-        Page<TicketType> page = includeInactive
-                ? ticketTypeRepository.findByEventId(eventId, pageable)
-                : ticketTypeRepository.findByEventIdAndActiveTrue(eventId, pageable);
-
-        log.debug("[TicketType] findByEvent paginado -> {} elementos en página {}", page.getNumberOfElements(), pageable.getPageNumber());
-        return page.map(this::toDto);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public TicketTypeResponseDto findById(Long id) {
-        log.debug("[TicketType] Buscando tarifa id={}", id);
-        return toDto(getTicketTypeOrThrow(id));
     }
 
     @Override
@@ -89,7 +82,9 @@ public class TicketTypeServiceImpl implements TicketTypeService {
                 .price(request.price())
                 .totalCapacity(request.totalCapacity())
                 .availableCapacity(request.totalCapacity())
-                .maxPerPurchase(request.maxPerPurchase() != null ? request.maxPerPurchase() : 6)
+                .maxPerPurchase(request.maxPerPurchase() != null
+                        ? request.maxPerPurchase()
+                        : TicketType.DEFAULT_MAX_PER_PURCHASE)
                 .isPresale(request.isPresale() != null && request.isPresale())
                 .saleStartDate(request.saleStartDate())
                 .saleEndDate(request.saleEndDate())
@@ -128,6 +123,8 @@ public class TicketTypeServiceImpl implements TicketTypeService {
         }
         if (request.maxPerPurchase() != null) {
             ticketType.setMaxPerPurchase(request.maxPerPurchase());
+        } else if (ticketType.getMaxPerPurchase() == null) {
+            ticketType.setMaxPerPurchase(TicketType.DEFAULT_MAX_PER_PURCHASE);
         }
         if (request.isPresale() != null) {
             ticketType.setPresale(request.isPresale());
@@ -149,6 +146,10 @@ public class TicketTypeServiceImpl implements TicketTypeService {
         TicketType ticketType = getTicketTypeOrThrow(id);
         User user = getUserOrThrow(userEmail);
         validateEventOwnership(ticketType.getEvent(), user);
+
+        if (active && !ticketType.isActive()) {
+            validateCapacityForReactivation(ticketType);
+        }
 
         ticketType.setActive(active);
         ticketTypeRepository.save(ticketType);
@@ -212,6 +213,17 @@ public class TicketTypeServiceImpl implements TicketTypeService {
         }
     }
 
+    private boolean isAuthorizedToViewInactive(Event event) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getName())) {
+            return false;
+        }
+
+        return userRepository.findByEmail(auth.getName())
+                .map(u -> u.getRole() == UserRole.ADMIN || event.getOrganizer().getId().equals(u.getId()))
+                .orElse(false);
+    }
+
     private void validateSaleDates(LocalDate saleStartDate, LocalDate saleEndDate, LocalDate eventDate) {
         if (saleStartDate != null && saleEndDate != null && saleEndDate.isBefore(saleStartDate)) {
             log.warn("[TicketType] Fechas de venta inválidas: inicio={} fin={}", saleStartDate, saleEndDate);
@@ -267,6 +279,24 @@ public class TicketTypeServiceImpl implements TicketTypeService {
         currentTicket.setAvailableCapacity(newCapacity - soldCount);
     }
 
+    private void validateCapacityForReactivation(TicketType ticketType) {
+        Event event = ticketType.getEvent();
+        int otherTicketsCapacity = ticketTypeRepository.sumCapacityByEventIdExcluding(
+                event.getId(), ticketType.getId());
+        int totalCapacity = otherTicketsCapacity + ticketType.getTotalCapacity();
+
+        if (totalCapacity > event.getCapacity()) {
+            int available = Math.max(0, event.getCapacity() - otherTicketsCapacity);
+            log.warn("[TicketType] Reactivación rechazada por aforo: evento={}, otras={}, tarifa={}, disponible={}",
+                    event.getCapacity(), otherTicketsCapacity, ticketType.getTotalCapacity(), available);
+            throw new IllegalArgumentException(
+                    "No se puede reactivar la tarifa: el aforo total de las tarifas (" + totalCapacity +
+                    ") supera la capacidad máxima del evento (" + event.getCapacity() +
+                    "). Aforo disponible restante: " + available
+            );
+        }
+    }
+
     private void ensureNameIsAvailable(String name, Long eventId, TicketType currentTicket) {
         if (currentTicket != null && currentTicket.getName().equalsIgnoreCase(name)) {
             return;
@@ -304,7 +334,6 @@ public class TicketTypeServiceImpl implements TicketTypeService {
                 t.getAvailableCapacity(),
                 soldCount,
                 computeStatus(t),
-                t.isActive(),
                 t.getMaxPerPurchase(),
                 t.isPresale(),
                 t.getSaleStartDate(),

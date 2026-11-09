@@ -3,6 +3,7 @@ package com.backend.eventia.rules;
 import com.backend.eventia.model.Category;
 import com.backend.eventia.model.Order;
 import com.backend.eventia.model.User;
+import com.backend.eventia.model.enums.OrderStatus;
 import com.backend.eventia.model.enums.UserRole;
 import com.backend.eventia.repository.CategoryRepository;
 import com.backend.eventia.repository.OrderRepository;
@@ -142,7 +143,7 @@ class AdminAndAuthRulesTest {
     void categoriaCumpleYRechazaNombreDuplicadoCon409() throws Exception {
         String createBody = "{\"name\":\" comedia standup \",\"description\":\"Shows\",\"active\":true}";
 
-        mockMvc.perform(post("/api/admin/categories")
+        mockMvc.perform(post("/api/categories")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createBody))
@@ -150,7 +151,7 @@ class AdminAndAuthRulesTest {
                 .andExpect(jsonPath("$.name").value("Comedia standup"));
 
         // Duplicado ignorando mayúsculas -> 409
-        mockMvc.perform(post("/api/admin/categories")
+        mockMvc.perform(post("/api/categories")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"COMEDIA STANDUP\",\"description\":\"Otro\",\"active\":true}"))
@@ -161,7 +162,7 @@ class AdminAndAuthRulesTest {
         );
 
         // Actualizar hacia un nombre ya existente -> 409
-        mockMvc.perform(put("/api/admin/categories/{id}", second.getId())
+        mockMvc.perform(put("/api/categories/{id}", second.getId())
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"Comedia standup\",\"description\":\"Torneos\",\"active\":true}"))
@@ -178,13 +179,13 @@ class AdminAndAuthRulesTest {
         orderRepository.save(Order.builder()
                 .totalAmount(150.0)
                 .paymentMethod("CARD")
-                .paymentStatus("PAGADO")
+                .paymentStatus(OrderStatus.PAID)
                 .user(buyer)
                 .build());
         orderRepository.save(Order.builder()
                 .totalAmount(999.0)
                 .paymentMethod("CARD")
-                .paymentStatus("PENDIENTE")
+                .paymentStatus(OrderStatus.CANCELLED)
                 .user(buyer)
                 .build());
 
@@ -195,4 +196,3 @@ class AdminAndAuthRulesTest {
                 .andExpect(jsonPath("$.processedOrders.value").value(1.0));
     }
 }
-
