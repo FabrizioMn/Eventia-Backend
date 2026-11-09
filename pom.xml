@@ -108,9 +108,16 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Dependencias para la implementacion de WebSocket -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+        <!-- Dependencias para la implementacion de WebSocket -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
         </dependency>
 
     </dependencies>
