@@ -70,9 +70,9 @@ public class AdminMonitoringServiceImpl implements AdminMonitoringService {
         double previousMonthRevenue = orderRepository.sumTotalRevenueBetween(previousStart, currentStart);
         KpiMetricDto revenueKpi = buildKpiMetric(totalRevenue, currentMonthRevenue, previousMonthRevenue);
 
-        long totalOrders = orderRepository.count();
-        long currentMonthOrders = orderRepository.countByCreatedAtBetween(currentStart, nextStart);
-        long previousMonthOrders = orderRepository.countByCreatedAtBetween(previousStart, currentStart);
+        long totalOrders = orderRepository.countPaidOrders();
+        long currentMonthOrders = orderRepository.countPaidOrdersBetween(currentStart, nextStart);
+        long previousMonthOrders = orderRepository.countPaidOrdersBetween(previousStart, currentStart);
         KpiMetricDto ordersKpi = buildKpiMetric(totalOrders, currentMonthOrders, previousMonthOrders);
 
         long totalTickets = ticketRepository.count();
@@ -103,6 +103,9 @@ public class AdminMonitoringServiceImpl implements AdminMonitoringService {
             long monthlyOrders = 0L;
 
             for (Order order : orders) {
+                if (!isPaidOrder(order)) {
+                    continue;
+                }
                 LocalDateTime createdAt = order.getCreatedAt();
                 if (createdAt != null && YearMonth.from(createdAt).equals(month)) {
                     Double amount = order.getTotalAmount();
@@ -220,6 +223,11 @@ public class AdminMonitoringServiceImpl implements AdminMonitoringService {
                 roundedPercentage,
                 roundTwoDecimals(previousMonthValue)
         );
+    }
+
+    private boolean isPaidOrder(Order order) {
+        String status = order.getPaymentStatus();
+        return "PAGADO".equalsIgnoreCase(status) || "COMPLETED".equalsIgnoreCase(status);
     }
 
     private double roundTwoDecimals(double value) {

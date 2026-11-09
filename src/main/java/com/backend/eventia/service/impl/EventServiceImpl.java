@@ -108,10 +108,11 @@ public class EventServiceImpl implements EventService {
         validateSchedule(request.date(), request.startTime(), request.endTime());
         ensureTitleIsAvailable(title, organizer.getId(), null);
 
-        // Por defecto se crea en DRAFT si no se especifica; se previenen estados administrativos finales
+        // Por defecto se crea en DRAFT si no se especifica; se rechazan estados administrativos finales
         EventStatus initialStatus = request.status() != null ? request.status() : EventStatus.DRAFT;
         if (initialStatus == EventStatus.CANCELLED || initialStatus == EventStatus.FINISHED) {
-            initialStatus = EventStatus.DRAFT;
+            log.warn("[Event] Estado inicial inválido al crear evento: {}", initialStatus);
+            throw new IllegalArgumentException("No se puede crear un evento directamente con estado " + initialStatus);
         }
 
         Event event = Event.builder()
@@ -164,6 +165,7 @@ public class EventServiceImpl implements EventService {
             event.setBannerUrl(banner.isEmpty() ? null : banner);
         }
         if (request.status() != null) {
+            validateStatusTransition(event.getStatus(), request.status());
             event.setStatus(request.status());
         }
 
@@ -181,6 +183,7 @@ public class EventServiceImpl implements EventService {
         Event event = getEventOrThrow(id);
         User user = getUserOrThrow(userEmail);
         validateOwnership(event, user);
+        validateStatusTransition(event.getStatus(), status);
 
         event.setStatus(status);
         eventRepository.save(event);
@@ -272,6 +275,16 @@ public class EventServiceImpl implements EventService {
         if (!endTime.isAfter(startTime)) {
             log.warn("[Event] Horario inválido: startTime={}, endTime={}", startTime, endTime);
             throw new IllegalArgumentException("La hora de fin debe ser posterior a la hora de inicio");
+        }
+    }
+
+    private void validateStatusTransition(EventStatus currentStatus, EventStatus targetStatus) {
+        if (currentStatus == null || targetStatus == null || currentStatus == targetStatus) {
+            return;
+        }
+        if (currentStatus == EventStatus.CANCELLED || currentStatus == EventStatus.FINISHED) {
+            log.warn("[Event] Transición de estado inválida: {} -> {}", currentStatus, targetStatus);
+            throw new IllegalStateException("No se puede cambiar el estado de un evento que ya está " + currentStatus);
         }
     }
 

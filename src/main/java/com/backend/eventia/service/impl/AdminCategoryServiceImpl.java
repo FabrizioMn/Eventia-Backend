@@ -34,7 +34,7 @@ public class AdminCategoryServiceImpl implements AdminCategoryService {
     @Override
     @Transactional
     public AdminCategoryResponseDto createCategory(AdminCategoryRequestDto request) {
-        String normalizedName = request.name().trim();
+        String normalizedName = normalizeName(request.name());
         if (categoryRepository.existsByNameIgnoreCase(normalizedName)) {
             log.warn("[AdminCategory] Intento de crear categoria duplicada: '{}'", normalizedName);
             throw new DuplicateResourceException("Ya existe una categoría con el nombre: " + normalizedName);
@@ -57,7 +57,7 @@ public class AdminCategoryServiceImpl implements AdminCategoryService {
     public AdminCategoryResponseDto updateCategory(Long id, AdminCategoryRequestDto request) {
         Category category = findCategoryOrThrow(id);
 
-        String normalizedName = request.name().trim();
+        String normalizedName = normalizeName(request.name());
         if (categoryRepository.existsByNameIgnoreCaseAndIdNot(normalizedName, id)) {
             log.warn("[AdminCategory] Nombre duplicado al actualizar id={}: '{}'", id, normalizedName);
             throw new DuplicateResourceException("Ya existe otra categoría con el nombre: " + normalizedName);
@@ -81,6 +81,14 @@ public class AdminCategoryServiceImpl implements AdminCategoryService {
         categoryRepository.save(category);
         log.info("[AdminCategory] Estado actualizado id={} active={}", category.getId(), category.isActive());
         return toDto(category);
+    }
+
+    private String normalizeName(String name) {
+        String trimmed = name != null ? name.trim() : "";
+        if (trimmed.isEmpty()) {
+            throw new IllegalArgumentException("El nombre de la categoría no puede estar vacío");
+        }
+        return Character.toUpperCase(trimmed.charAt(0)) + trimmed.substring(1);
     }
 
     private Category findCategoryOrThrow(Long id) {
