@@ -1,9 +1,12 @@
 package com.backend.eventia.security;
 
+import com.backend.eventia.model.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.io.DecodingException;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
@@ -21,10 +24,37 @@ public class JwtUtils {
     @Value("${security.jwt.expiration}")
     private long expiration;
 
+    @PostConstruct
+    void validateSecret() {
+        if (key == null || key.isBlank()) {
+            throw new IllegalStateException("JWT_SECRET no está configurado");
+        }
 
-    public String generateToken(UserDetails userDetails) {
+        byte[] keyBytes;
+        try {
+            keyBytes = Decoders.BASE64.decode(key);
+        } catch (DecodingException ex) {
+            throw new IllegalStateException("JWT_SECRET debe estar codificado en Base64", ex);
+        }
+
+        if (keyBytes.length < 32) {
+            throw new IllegalStateException("JWT_SECRET debe tener al menos 32 bytes");
+        }
+    }
+
+    public long getExpirationInSeconds() {
+        return expiration / 1000;
+    }
+
+
+    public String generateToken(User user) {
+        // El claim "role" es informativo para el cliente. La autoridad efectiva
+        // se carga desde la BD en UserDetailsServiceImpl y no se toma de este claim.
         return Jwts.builder()
-                .subject(userDetails.getUsername())
+                .subject(user.getEmail())
+                .claim("role", user.getRole().name())
+                .claim("userId", user.getId())
+                .claim("name", user.getFirstName() + " " + user.getLastName())
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getSigningKey())
@@ -33,6 +63,17 @@ public class JwtUtils {
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
+    }
+
+    public String extractRole(String token) {
+        return extractClaim(token, claims -> claims.get("role", String.class));
+    }
+
+    public Long extractUserId(String token) {
+        return extractClaim(token, claims -> {
+            Number userId = claims.get("userId", Number.class);
+            return userId != null ? userId.longValue() : null;
+        });
     }
 
     private boolean isTokenExpired(String token) {

@@ -14,6 +14,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -58,6 +59,7 @@ public class EventController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ORGANIZER', 'ADMIN')")
     public ResponseEntity<EventDetailResponseDto> create(
             @RequestBody @Valid EventRequestDto request,
             Authentication authentication
@@ -70,6 +72,7 @@ public class EventController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ORGANIZER', 'ADMIN')")
     public ResponseEntity<EventDetailResponseDto> update(
             @PathVariable Long id,
             @RequestBody @Valid EventRequestDto request,
@@ -83,6 +86,7 @@ public class EventController {
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('ORGANIZER', 'ADMIN')")
     public ResponseEntity<Void> updateStatus(
             @PathVariable Long id,
             @RequestParam EventStatus status,
@@ -96,6 +100,7 @@ public class EventController {
     }
 
     @PatchMapping("/{id}/active")
+    @PreAuthorize("hasAnyRole('ORGANIZER', 'ADMIN')")
     public ResponseEntity<Void> updateActive(
             @PathVariable Long id,
             @RequestParam boolean active,

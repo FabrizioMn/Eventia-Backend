@@ -12,6 +12,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -56,6 +57,7 @@ public class TicketTypeController {
     }
 
     @PostMapping("/api/events/{eventId}/ticket-types")
+    @PreAuthorize("hasAnyRole('ORGANIZER', 'ADMIN')")
     public ResponseEntity<TicketTypeResponseDto> create(
             @PathVariable Long eventId,
             @RequestBody @Valid TicketTypeRequestDto request,
@@ -69,6 +71,7 @@ public class TicketTypeController {
     }
 
     @PutMapping("/api/ticket-types/{id}")
+    @PreAuthorize("hasAnyRole('ORGANIZER', 'ADMIN')")
     public ResponseEntity<TicketTypeResponseDto> update(
             @PathVariable Long id,
             @RequestBody @Valid TicketTypeRequestDto request,
@@ -82,6 +85,7 @@ public class TicketTypeController {
     }
 
     @PatchMapping("/api/ticket-types/{id}/status")
+    @PreAuthorize("hasAnyRole('ORGANIZER', 'ADMIN')")
     public ResponseEntity<Void> updateStatus(
             @PathVariable Long id,
             @RequestParam boolean active,
@@ -95,6 +99,7 @@ public class TicketTypeController {
     }
 
     @DeleteMapping("/api/ticket-types/{id}")
+    @PreAuthorize("hasAnyRole('ORGANIZER', 'ADMIN')")
     public ResponseEntity<Void> delete(
             @PathVariable Long id,
             Authentication authentication
