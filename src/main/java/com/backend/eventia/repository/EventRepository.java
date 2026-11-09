@@ -19,20 +19,18 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             JOIN FETCH e.organizer
             LEFT JOIN FETCH e.ticketTypes
             WHERE e.active = true
+            AND e.status NOT IN (com.backend.eventia.model.enums.EventStatus.PENDING, com.backend.eventia.model.enums.EventStatus.CANCELLED)
             ORDER BY e.date ASC, e.startTime ASC
             """)
     List<Event> findActiveEventsWithDetails();
-    List<Event> findByOrganizerId(Long organizerId);
 
     List<Event> findByOrganizerIdAndActiveTrue(Long organizerId);
 
-    long countByOrganizerIdAndActiveTrue(Long organizerId);
 
     Page<Event> findByOrganizerId(Long organizerId, Pageable pageable);
 
     Page<Event> findByOrganizerIdAndActiveTrue(Long organizerId, Pageable pageable);
 
-    Page<Event> findByActiveTrue(Pageable pageable);
 
     Page<Event> findByActiveTrueAndStatus(EventStatus status, Pageable pageable);
 
