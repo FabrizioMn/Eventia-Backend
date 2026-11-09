@@ -2,6 +2,7 @@ package com.backend.eventia.service.impl;
 
 import com.backend.eventia.dto.tickettype.TicketTypeRequestDto;
 import com.backend.eventia.dto.tickettype.TicketTypeResponseDto;
+import com.backend.eventia.exception.ConflictException;
 import com.backend.eventia.exception.DuplicateResourceException;
 import com.backend.eventia.exception.ResourceNotFoundException;
 import com.backend.eventia.model.Event;
@@ -22,6 +23,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Slf4j
@@ -71,6 +73,7 @@ public class TicketTypeServiceImpl implements TicketTypeService {
         validateEventOwnership(event, user);
 
         ensureNameIsAvailable(name, eventId, null);
+        validateSaleDates(request.saleStartDate(), request.saleEndDate(), event.getDate());
         validateCapacityForCreation(event, request.totalCapacity());
 
         TicketType ticketType = TicketType.builder()
@@ -106,6 +109,7 @@ public class TicketTypeServiceImpl implements TicketTypeService {
 
         String newName = request.name().trim();
         ensureNameIsAvailable(newName, event.getId(), ticketType);
+        validateSaleDates(request.saleStartDate(), request.saleEndDate(), event.getDate());
 
         validateCapacityForUpdate(event, id, request.totalCapacity(), ticketType);
 
@@ -156,7 +160,7 @@ public class TicketTypeServiceImpl implements TicketTypeService {
 
         if (orderDetailRepository.existsByTicketTypeId(id)) {
             log.warn("[TicketType] Eliminación rechazada: la tarifa id={} tiene ventas registradas", id);
-            throw new IllegalStateException("No se puede eliminar la tarifa porque ya cuenta con ventas registradas. En su lugar, desactívela.");
+            throw new ConflictException("No se puede eliminar la tarifa porque ya cuenta con ventas registradas. En su lugar, desactívela.");
         }
 
         ticketTypeRepository.delete(ticketType);
@@ -210,6 +214,21 @@ public class TicketTypeServiceImpl implements TicketTypeService {
         return userRepository.findByEmail(auth.getName())
                 .map(u -> u.getRole() == UserRole.ADMIN || event.getOrganizer().getId().equals(u.getId()))
                 .orElse(false);
+    }
+
+    private void validateSaleDates(LocalDate saleStartDate, LocalDate saleEndDate, LocalDate eventDate) {
+        if (saleStartDate != null && saleEndDate != null && saleEndDate.isBefore(saleStartDate)) {
+            log.warn("[TicketType] Fechas de venta inválidas: inicio={} fin={}", saleStartDate, saleEndDate);
+            throw new IllegalArgumentException("La fecha de fin de venta no puede ser anterior a la fecha de inicio de venta");
+        }
+        if (eventDate != null && saleEndDate != null && saleEndDate.isAfter(eventDate)) {
+            log.warn("[TicketType] Fecha fin de venta posterior al evento: fin={} evento={}", saleEndDate, eventDate);
+            throw new IllegalArgumentException("La fecha de fin de venta no puede ser posterior a la fecha del evento");
+        }
+        if (eventDate != null && saleStartDate != null && saleStartDate.isAfter(eventDate)) {
+            log.warn("[TicketType] Fecha inicio de venta posterior al evento: inicio={} evento={}", saleStartDate, eventDate);
+            throw new IllegalArgumentException("La fecha de inicio de venta no puede ser posterior a la fecha del evento");
+        }
     }
 
     private void validateCapacityForCreation(Event event, int newCapacity) {

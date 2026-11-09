@@ -1,0 +1,22 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:eventia_test;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  h2:
+    console:
+      enabled: false
+
+security:
+  jwt:
+    key-private: ${JWT_SECRET:964ffdb5e95797ad2be8a036924d97a1df90a004b69e25093959be7d5104601b}
+    expiration: ${JWT_EXPIRATION_MS:3600000}
+
+logging:
+  level:
+    com.backend.eventia: WARN
+    org.springframework.security: WARN

@@ -1,7 +1,10 @@
 package com.backend.eventia.dto.auth;
 
-// Solo token: el perfil y el rol se obtienen en GET /auth/me.
+// Mantiene "token" para compatibilidad y agrega datos básicos del usuario autenticado.
 public record AuthResponseDto(
-        String token
+        String token,
+        String tokenType,
+        long expiresIn,
+        AuthUserSummaryDto user
 ) {
 }

@@ -43,14 +43,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
 
-                if (jwtUtils.isTokenValid(token, userDetails)) {
+                if (!userDetails.isEnabled()) {
+                    SecurityContextHolder.clearContext();
+                    log.warn("[JWT] Usuario desactivado. Se rechaza la autenticación para: {}",
+                            userDetails.getUsername());
+                } else if (!userDetails.isAccountNonLocked()) {
+                    SecurityContextHolder.clearContext();
+                    log.warn("[JWT] Usuario bloqueado. Se rechaza la autenticación para: {}",
+                            userDetails.getUsername());
+                } else if (jwtUtils.isTokenValid(token, userDetails)) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails, null, userDetails.getAuthorities()
                     );
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
-                    log.debug("[JWT] Token validado. Usuario autenticado: {} | authorities: {}",
-                            userDetails.getUsername(), userDetails.getAuthorities());
+                    // Solo con fines académicos: se registra el header/token y claims para la sustentación.
+                    log.info("[JWT] Authorization recibido | header={} | {} {}", authHeader, request.getMethod(), request.getRequestURI());
+                    log.info("[JWT] Token validado | sub={} | claim role={} | authorities(BD)={} | {} {}",
+                            userEmail, jwtUtils.extractRole(token), userDetails.getAuthorities(),
+                            request.getMethod(), request.getRequestURI());
                 }
             }
         } catch (JwtException | UsernameNotFoundException | IllegalArgumentException e) {

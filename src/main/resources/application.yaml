@@ -5,6 +5,9 @@ spring:
   application:
     name: Eventia
 
+  profiles:
+    default: dev
+
   datasource:
     # Base de datos H2 en archivo.
     url: jdbc:h2:file:./data/eventia
@@ -23,11 +26,19 @@ spring:
 
 security:
   jwt:
-    key-private: 964ffdb5e95797ad2be8a036924d97a1df90a004b69e25093959be7d5104601b # <- DATOS DE PRUEBA
-    expiration: 86400000 # <- DATOS DE PRUEBA
+    # Valor por defecto solo para desarrollo. En producción define JWT_SECRET.
+    key-private: ${JWT_SECRET:964ffdb5e95797ad2be8a036924d97a1df90a004b69e25093959be7d5104601b}
+    expiration: ${JWT_EXPIRATION_MS:86400000}
 
 logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%X{requestId:-}] [%thread] %logger{36} - %msg%n"
   level:
     com:
       backend:
         eventia: DEBUG
+    # Para la demostración, subir temporalmente a DEBUG:
+    # logging.level.org.springframework.security: DEBUG
+    org:
+      springframework:
+        security: INFO

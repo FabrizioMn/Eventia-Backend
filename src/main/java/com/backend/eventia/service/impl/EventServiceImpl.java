@@ -166,6 +166,7 @@ public class EventServiceImpl implements EventService {
         User user = getUserOrThrow(userEmail);
         validateOrganizerRole(user);
         validateOwnership(event, user);
+        validateStatusTransition(event.getStatus(), status);
         validateStatusChangePermission(user, status);
 
         if (status == EventStatus.PUBLISHED && event.getStatus() != EventStatus.PUBLISHED) {
@@ -289,6 +290,16 @@ public class EventServiceImpl implements EventService {
         if (!endTime.isAfter(startTime)) {
             log.warn("[Event] Horario inválido: startTime={}, endTime={}", startTime, endTime);
             throw new IllegalArgumentException("La hora de fin debe ser posterior a la hora de inicio");
+        }
+    }
+
+    private void validateStatusTransition(EventStatus currentStatus, EventStatus targetStatus) {
+        if (currentStatus == null || targetStatus == null || currentStatus == targetStatus) {
+            return;
+        }
+        if (currentStatus == EventStatus.CANCELLED || currentStatus == EventStatus.FINISHED) {
+            log.warn("[Event] Transición de estado inválida: {} -> {}", currentStatus, targetStatus);
+            throw new IllegalStateException("No se puede cambiar el estado de un evento que ya está " + currentStatus);
         }
     }
 
