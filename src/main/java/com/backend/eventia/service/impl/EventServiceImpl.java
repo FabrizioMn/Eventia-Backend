@@ -1,6 +1,5 @@
 package com.backend.eventia.service.impl;
 
-import com.backend.eventia.dto.EventResponseDto;
 import com.backend.eventia.dto.event.EventDetailResponseDto;
 import com.backend.eventia.dto.event.EventRequestDto;
 import com.backend.eventia.dto.event.EventSummaryResponseDto;
@@ -8,12 +7,12 @@ import com.backend.eventia.exception.DuplicateResourceException;
 import com.backend.eventia.exception.ResourceNotFoundException;
 import com.backend.eventia.model.Category;
 import com.backend.eventia.model.Event;
-import com.backend.eventia.model.TicketType;
 import com.backend.eventia.model.User;
 import com.backend.eventia.model.enums.EventStatus;
 import com.backend.eventia.model.enums.UserRole;
 import com.backend.eventia.repository.CategoryRepository;
 import com.backend.eventia.repository.EventRepository;
+import com.backend.eventia.repository.TicketTypeRepository;
 import com.backend.eventia.repository.UserRepository;
 import com.backend.eventia.service.EventService;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.List;
 
 @Slf4j
 @Service
@@ -38,6 +36,7 @@ public class EventServiceImpl implements EventService {
     private final EventRepository eventRepository;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
+    private final TicketTypeRepository ticketTypeRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -50,20 +49,9 @@ public class EventServiceImpl implements EventService {
                 ? eventRepository.findAll(pageable)
                 : eventRepository.findByActiveTrueAndStatus(EventStatus.PUBLISHED, pageable);
 
-        log.debug("[Event] findAll -> {} eventos publicados encontrados en página {}", events.getNumberOfElements(), pageable.getPageNumber());
+        log.debug("[Event] findAll -> {} eventos encontrados en página {} (includeInactive={})",
+                events.getNumberOfElements(), pageable.getPageNumber(), includeInactive);
         return events.map(this::toSummaryDto);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<EventResponseDto> findAllActive() {
-        List<EventResponseDto> events = eventRepository.findAll().stream()
-                .filter(Event::isActive)
-                .map(this::toDto)
-                .toList();
-
-        log.debug("[Event] findAllActive -> {} eventos", events.size());
-        return events;
     }
 
     @Override
@@ -73,6 +61,7 @@ public class EventServiceImpl implements EventService {
                 organizerEmail, includeInactive, pageable.getPageNumber(), pageable.getPageSize());
 
         User organizer = getUserOrThrow(organizerEmail);
+        validateOrganizerRole(organizer);
 
         Page<Event> events = includeInactive
                 ? eventRepository.findByOrganizerId(organizer.getId(), pageable)
@@ -103,16 +92,12 @@ public class EventServiceImpl implements EventService {
         log.info("[Event] Creando evento '{}' para organizador='{}'", title, organizerEmail);
 
         User organizer = getUserOrThrow(organizerEmail);
+        validateOrganizerRole(organizer);
         Category category = getCategoryOrThrow(request.categoryId());
 
-        validateSchedule(request.date(), request.startTime(), request.endTime());
+        validateSchedule(request.date(), request.startTime(), request.endTime(), true);
         ensureTitleIsAvailable(title, organizer.getId(), null);
 
-        // Por defecto se crea en DRAFT si no se especifica; se previenen estados administrativos finales
-        EventStatus initialStatus = request.status() != null ? request.status() : EventStatus.DRAFT;
-        if (initialStatus == EventStatus.CANCELLED || initialStatus == EventStatus.FINISHED) {
-            initialStatus = EventStatus.DRAFT;
-        }
 
         Event event = Event.builder()
                 .title(title)
@@ -123,7 +108,7 @@ public class EventServiceImpl implements EventService {
                 .location(request.location())
                 .capacity(request.capacity())
                 .bannerUrl(request.bannerUrl() != null && !request.bannerUrl().isBlank() ? request.bannerUrl().trim() : null)
-                .status(initialStatus)
+                .status(EventStatus.PENDING)
                 .active(true)
                 .category(category)
                 .organizer(organizer)
@@ -142,13 +127,15 @@ public class EventServiceImpl implements EventService {
 
         Event event = getEventOrThrow(id);
         User user = getUserOrThrow(userEmail);
+        validateOrganizerRole(user);
         validateOwnership(event, user);
 
         String newTitle = request.title().trim();
         ensureTitleIsAvailable(newTitle, event.getOrganizer().getId(), event);
 
         Category category = getCategoryOrThrow(request.categoryId());
-        validateSchedule(request.date(), request.startTime(), request.endTime());
+        validateSchedule(request.date(), request.startTime(), request.endTime(), false);
+        validateCapacityForEventUpdate(event, request.capacity());
 
         event.setTitle(newTitle);
         event.setDescription(request.description());
@@ -162,9 +149,6 @@ public class EventServiceImpl implements EventService {
         if (request.bannerUrl() != null) {
             String banner = request.bannerUrl().trim();
             event.setBannerUrl(banner.isEmpty() ? null : banner);
-        }
-        if (request.status() != null) {
-            event.setStatus(request.status());
         }
 
         event = eventRepository.saveAndFlush(event);
@@ -180,7 +164,13 @@ public class EventServiceImpl implements EventService {
 
         Event event = getEventOrThrow(id);
         User user = getUserOrThrow(userEmail);
+        validateOrganizerRole(user);
         validateOwnership(event, user);
+        validateStatusChangePermission(user, status);
+
+        if (status == EventStatus.PUBLISHED && event.getStatus() != EventStatus.PUBLISHED) {
+            validatePublishable(event);
+        }
 
         event.setStatus(status);
         eventRepository.save(event);
@@ -195,15 +185,10 @@ public class EventServiceImpl implements EventService {
 
         Event event = getEventOrThrow(id);
         User user = getUserOrThrow(userEmail);
+        validateOrganizerRole(user);
         validateOwnership(event, user);
 
         event.setActive(active);
-        if (!active && event.getStatus() != EventStatus.FINISHED) {
-            event.setStatus(EventStatus.HIDDEN);
-        } else if (active && event.getStatus() == EventStatus.HIDDEN) {
-            event.setStatus(EventStatus.DRAFT);
-        }
-
         eventRepository.save(event);
         log.info("[Event] Visibilidad activa de evento actualizada id={} active={}", event.getId(), event.isActive());
     }
@@ -264,8 +249,40 @@ public class EventServiceImpl implements EventService {
         }
     }
 
-    private void validateSchedule(LocalDate date, LocalTime startTime, LocalTime endTime) {
-        if (date != null && date.isBefore(LocalDate.now())) {
+    private void validateOrganizerRole(User user) {
+        if (user.getRole() != UserRole.ADMIN && user.getRole() != UserRole.ORGANIZER) {
+            log.warn("[Event] Acceso denegado: usuario id={} rol={} no puede gestionar eventos", user.getId(), user.getRole());
+            throw new AccessDeniedException("Solo un organizador o administrador puede gestionar eventos");
+        }
+    }
+
+    private void validateStatusChangePermission(User user, EventStatus status) {
+        if (user.getRole() == UserRole.ORGANIZER && status == EventStatus.PUBLISHED) {
+            log.warn("[Event] Organizador id={} intentó publicar un evento sin permisos de administrador", user.getId());
+            throw new AccessDeniedException("Solo un administrador puede publicar eventos");
+        }
+    }
+
+    private void validatePublishable(Event event) {
+        if (event.getDate().isBefore(LocalDate.now())) {
+            log.warn("[Event] No se puede publicar el evento id={} con fecha pasada: date={}", event.getId(), event.getDate());
+            throw new IllegalArgumentException("No se puede publicar un evento cuya fecha ya pasó");
+        }
+    }
+
+    private void validateCapacityForEventUpdate(Event event, int newCapacity) {
+        int allocatedCapacity = ticketTypeRepository.sumCapacityByEventId(event.getId());
+        if (newCapacity < allocatedCapacity) {
+            log.warn("[Event] Capacidad inválida: evento id={}, nueva={}, asignada a tarifas={}",
+                    event.getId(), newCapacity, allocatedCapacity);
+            throw new IllegalArgumentException(
+                    "La capacidad del evento no puede ser menor a la capacidad asignada a las tarifas (" + allocatedCapacity + ")"
+            );
+        }
+    }
+
+    private void validateSchedule(LocalDate date, LocalTime startTime, LocalTime endTime, boolean requireFutureDate) {
+        if (requireFutureDate && date != null && date.isBefore(LocalDate.now())) {
             log.warn("[Event] Fecha inválida en el pasado: date={}", date);
             throw new IllegalArgumentException("La fecha del evento no puede ser anterior a la fecha actual");
         }
@@ -284,32 +301,6 @@ public class EventServiceImpl implements EventService {
             log.warn("[Event] Título duplicado para organizador id={}: '{}'", organizerId, title);
             throw new DuplicateResourceException("Ya tienes un evento registrado con el título: " + title);
         }
-    }
-
-    private EventResponseDto toDto(Event event) {
-        // Precio más barato y % vendido desde los tipos de entrada
-        List<TicketType> tickets = event.getTicketTypes() == null ? List.of() : event.getTicketTypes();
-        Double price = tickets.stream()
-                .map(TicketType::getPrice)
-                .min(Double::compareTo)
-                .orElse(0.0);
-
-        int total = tickets.stream().mapToInt(TicketType::getTotalCapacity).sum();
-        int available = tickets.stream().mapToInt(TicketType::getAvailableCapacity).sum();
-        int soldPct = total > 0 ? Math.round((float) (total - available) / total * 100) : 0;
-
-        return new EventResponseDto(
-                event.getId(),
-                event.getTitle(),
-                event.getDescription(),
-                event.getDate(),
-                event.getLocation(),
-                event.getCapacity(),
-                event.getStatus() != null ? event.getStatus().name() : null,
-                event.getCategory() == null ? "" : event.getCategory().getName(),
-                price,
-                soldPct
-        );
     }
 
     private EventSummaryResponseDto toSummaryDto(Event event) {
