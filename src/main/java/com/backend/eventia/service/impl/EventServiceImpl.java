@@ -259,10 +259,12 @@ public class EventServiceImpl implements EventService {
     }
 
     private void validateStatusChangePermission(User user, EventStatus status) {
+        /*
         if (user.getRole() == UserRole.ORGANIZER && status == EventStatus.PUBLISHED) {
             log.warn("[Event] Organizador id={} intentó publicar un evento sin permisos de administrador", user.getId());
             throw new AccessDeniedException("Solo un administrador puede publicar eventos");
         }
+        */
     }
 
     private void validatePublishable(Event event) {
