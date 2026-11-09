@@ -152,13 +152,13 @@ public class OrganizerDashboardServiceImpl implements OrganizerDashboardService 
 
         return new OrganizerKpiDto(
                 activeEventsCount,
-                activeEventsCount > 0 ? 14.3 : null,
+                null,
                 ticketsSold,
-                ticketsSold > 0 ? 22.8 : null,
+                null,
                 totalRevenue,
-                totalRevenue > 0 ? 18.5 : null,
+                null,
                 occupancyRate,
-                occupancyRate > 0 ? 6.2 : null
+                null
         );
     }
 

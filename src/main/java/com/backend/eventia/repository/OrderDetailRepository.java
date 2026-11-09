@@ -11,7 +11,7 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, Long> 
 
     boolean existsByTicketTypeId(Long ticketTypeId);
 
-    @Query("SELECT COALESCE(SUM(od.subtotal), 0.0) FROM OrderDetail od " +
+    @Query("SELECT COALESCE(SUM(od.subtotal - od.discountApplied), 0.0) FROM OrderDetail od " +
             "WHERE od.ticketType.event.organizer.id = :organizerId " +
             "AND od.order.paymentStatus = com.backend.eventia.model.enums.OrderStatus.PAID")
     Double sumRevenueByOrganizerId(@Param("organizerId") Long organizerId);
