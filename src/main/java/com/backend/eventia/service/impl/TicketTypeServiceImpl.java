@@ -7,6 +7,7 @@ import com.backend.eventia.exception.ResourceNotFoundException;
 import com.backend.eventia.model.Event;
 import com.backend.eventia.model.TicketType;
 import com.backend.eventia.model.User;
+import com.backend.eventia.model.enums.EventStatus;
 import com.backend.eventia.model.enums.UserRole;
 import com.backend.eventia.repository.EventRepository;
 import com.backend.eventia.repository.OrderDetailRepository;
@@ -15,9 +16,9 @@ import com.backend.eventia.repository.UserRepository;
 import com.backend.eventia.service.TicketTypeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,33 +39,25 @@ public class TicketTypeServiceImpl implements TicketTypeService {
     public List<TicketTypeResponseDto> findByEvent(Long eventId, boolean includeInactive) {
         log.debug("[TicketType] findByEvent(eventId={}, includeInactive={})", eventId, includeInactive);
 
+        Event event = getEventOrThrow(eventId);
+        boolean privileged = isAuthorizedToViewInactive(event);
+
+        if (!privileged && (!event.isActive() || event.getStatus() != EventStatus.PUBLISHED)) {
+            log.warn("[TicketType] Intento no autorizado de consultar tarifas de evento no publicado o inactivo id={}", eventId);
+            throw new ResourceNotFoundException("No se encontró el evento con el id: " + eventId);
+        }
+
+        if (includeInactive && !privileged) {
+            log.warn("[TicketType] Acceso denegado: usuario sin permisos intentó ver tarifas inactivas del evento id={}", eventId);
+            throw new AccessDeniedException("No tienes permisos para ver tarifas inactivas de este evento");
+        }
+
         List<TicketType> list = includeInactive
                 ? ticketTypeRepository.findByEventId(eventId)
                 : ticketTypeRepository.findByEventIdAndActiveTrue(eventId);
 
         log.debug("[TicketType] findByEvent -> {} tarifas encontradas", list.size());
         return list.stream().map(this::toDto).toList();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Page<TicketTypeResponseDto> findByEvent(Long eventId, boolean includeInactive, Pageable pageable) {
-        log.debug("[TicketType] findByEvent paginado(eventId={}, includeInactive={}, page={}, size={})",
-                eventId, includeInactive, pageable.getPageNumber(), pageable.getPageSize());
-
-        Page<TicketType> page = includeInactive
-                ? ticketTypeRepository.findByEventId(eventId, pageable)
-                : ticketTypeRepository.findByEventIdAndActiveTrue(eventId, pageable);
-
-        log.debug("[TicketType] findByEvent paginado -> {} elementos en página {}", page.getNumberOfElements(), pageable.getPageNumber());
-        return page.map(this::toDto);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public TicketTypeResponseDto findById(Long id) {
-        log.debug("[TicketType] Buscando tarifa id={}", id);
-        return toDto(getTicketTypeOrThrow(id));
     }
 
     @Override
@@ -208,6 +201,17 @@ public class TicketTypeServiceImpl implements TicketTypeService {
         }
     }
 
+    private boolean isAuthorizedToViewInactive(Event event) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getName())) {
+            return false;
+        }
+
+        return userRepository.findByEmail(auth.getName())
+                .map(u -> u.getRole() == UserRole.ADMIN || event.getOrganizer().getId().equals(u.getId()))
+                .orElse(false);
+    }
+
     private void validateCapacityForCreation(Event event, int newCapacity) {
         int currentTotal = ticketTypeRepository.sumCapacityByEventId(event.getId());
         if (currentTotal + newCapacity > event.getCapacity()) {
@@ -285,7 +289,6 @@ public class TicketTypeServiceImpl implements TicketTypeService {
                 t.getAvailableCapacity(),
                 soldCount,
                 computeStatus(t),
-                t.isActive(),
                 t.getMaxPerPurchase(),
                 t.isPresale(),
                 t.getSaleStartDate(),

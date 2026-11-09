@@ -11,10 +11,6 @@ public interface TicketTypeService {
 
     List<TicketTypeResponseDto> findByEvent(Long eventId, boolean includeInactive);
 
-    Page<TicketTypeResponseDto> findByEvent(Long eventId, boolean includeInactive, Pageable pageable);
-
-    TicketTypeResponseDto findById(Long id);
-
     TicketTypeResponseDto create(Long eventId, TicketTypeRequestDto request, String userEmail);
 
     TicketTypeResponseDto update(Long id, TicketTypeRequestDto request, String userEmail);
