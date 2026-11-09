@@ -188,8 +188,10 @@ public class TicketServiceImpl implements TicketService {
                     "La venta de la tarifa '" + ticketType.getName() + "' ha finalizado");
         }
 
-        Integer maxPerPurchase = ticketType.getMaxPerPurchase();
-        if (maxPerPurchase != null && quantity > maxPerPurchase) {
+        int maxPerPurchase = ticketType.getMaxPerPurchase() != null
+                ? ticketType.getMaxPerPurchase()
+                : TicketType.DEFAULT_MAX_PER_PURCHASE;
+        if (quantity > maxPerPurchase) {
             throw new IllegalArgumentException(
                     "Solo se pueden comprar hasta " + maxPerPurchase +
                             " entradas de la tarifa '" + ticketType.getName() + "'");

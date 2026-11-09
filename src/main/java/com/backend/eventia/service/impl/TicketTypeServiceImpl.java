@@ -82,7 +82,9 @@ public class TicketTypeServiceImpl implements TicketTypeService {
                 .price(request.price())
                 .totalCapacity(request.totalCapacity())
                 .availableCapacity(request.totalCapacity())
-                .maxPerPurchase(request.maxPerPurchase() != null ? request.maxPerPurchase() : 6)
+                .maxPerPurchase(request.maxPerPurchase() != null
+                        ? request.maxPerPurchase()
+                        : TicketType.DEFAULT_MAX_PER_PURCHASE)
                 .isPresale(request.isPresale() != null && request.isPresale())
                 .saleStartDate(request.saleStartDate())
                 .saleEndDate(request.saleEndDate())
@@ -121,6 +123,8 @@ public class TicketTypeServiceImpl implements TicketTypeService {
         }
         if (request.maxPerPurchase() != null) {
             ticketType.setMaxPerPurchase(request.maxPerPurchase());
+        } else if (ticketType.getMaxPerPurchase() == null) {
+            ticketType.setMaxPerPurchase(TicketType.DEFAULT_MAX_PER_PURCHASE);
         }
         if (request.isPresale() != null) {
             ticketType.setPresale(request.isPresale());
@@ -142,6 +146,10 @@ public class TicketTypeServiceImpl implements TicketTypeService {
         TicketType ticketType = getTicketTypeOrThrow(id);
         User user = getUserOrThrow(userEmail);
         validateEventOwnership(ticketType.getEvent(), user);
+
+        if (active && !ticketType.isActive()) {
+            validateCapacityForReactivation(ticketType);
+        }
 
         ticketType.setActive(active);
         ticketTypeRepository.save(ticketType);
@@ -269,6 +277,24 @@ public class TicketTypeServiceImpl implements TicketTypeService {
         // Ajustar availableCapacity manteniendo la diferencia de vendidas
         currentTicket.setTotalCapacity(newCapacity);
         currentTicket.setAvailableCapacity(newCapacity - soldCount);
+    }
+
+    private void validateCapacityForReactivation(TicketType ticketType) {
+        Event event = ticketType.getEvent();
+        int otherTicketsCapacity = ticketTypeRepository.sumCapacityByEventIdExcluding(
+                event.getId(), ticketType.getId());
+        int totalCapacity = otherTicketsCapacity + ticketType.getTotalCapacity();
+
+        if (totalCapacity > event.getCapacity()) {
+            int available = Math.max(0, event.getCapacity() - otherTicketsCapacity);
+            log.warn("[TicketType] Reactivación rechazada por aforo: evento={}, otras={}, tarifa={}, disponible={}",
+                    event.getCapacity(), otherTicketsCapacity, ticketType.getTotalCapacity(), available);
+            throw new IllegalArgumentException(
+                    "No se puede reactivar la tarifa: el aforo total de las tarifas (" + totalCapacity +
+                    ") supera la capacidad máxima del evento (" + event.getCapacity() +
+                    "). Aforo disponible restante: " + available
+            );
+        }
     }
 
     private void ensureNameIsAvailable(String name, Long eventId, TicketType currentTicket) {
