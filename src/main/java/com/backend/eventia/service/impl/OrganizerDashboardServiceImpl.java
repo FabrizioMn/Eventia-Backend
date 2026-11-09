@@ -18,10 +18,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -35,6 +37,7 @@ public class OrganizerDashboardServiceImpl implements OrganizerDashboardService 
     private final TicketTypeRepository ticketTypeRepository;
     private final OrderDetailRepository orderDetailRepository;
     private final EventService eventService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     private static final String[] ZONE_COLORS = {
             "#3525cd", "#571ac0", "#4f46e5", "#7c3aed", "#6366f1", "#4338ca", "#3730a3"
@@ -62,6 +65,47 @@ public class OrganizerDashboardServiceImpl implements OrganizerDashboardService 
                 kpis.activeEvents(), kpis.ticketsSold(), kpis.totalRevenuePEN());
 
         return new OrganizerDashboardResponseDto(kpis, dailySales, zoneDistribution, recentEvents, activeShift);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OrganizerLiveSaleNotificationDto broadcastSaleNotification(
+            String organizerEmail,
+            String eventTitle,
+            String ticketTypeName,
+            Integer quantity,
+            Double unitPrice,
+            String buyerName) {
+        log.info("[OrganizerDashboard] Emitiendo notificación en vivo para organizador='{}': {}x '{}' a S/. {}",
+                organizerEmail, quantity, ticketTypeName, unitPrice);
+
+        User organizer = getUserOrThrow(organizerEmail);
+        OrganizerDashboardResponseDto freshData = getDashboardData(organizerEmail);
+
+        int safeQty = quantity != null && quantity > 0 ? quantity : 1;
+        double safePrice = unitPrice != null && unitPrice >= 0 ? unitPrice : 50.0;
+        double subtotal = safeQty * safePrice;
+        String safeBuyer = buyerName != null && !buyerName.isBlank() ? buyerName : "Comprador Anónimo";
+        String message = String.format("¡Nueva venta! %dx %s (%s) - S/ %.2f",
+                safeQty, ticketTypeName, eventTitle, subtotal);
+
+        OrganizerLiveSaleNotificationDto notification = new OrganizerLiveSaleNotificationDto(
+                organizer.getId(),
+                eventTitle,
+                ticketTypeName,
+                safeQty,
+                safePrice,
+                subtotal,
+                safeBuyer,
+                message,
+                LocalDateTime.now(),
+                freshData);
+
+        String destination = "/topic/organizers/" + organizer.getId() + "/dashboard";
+        log.info("[OrganizerDashboard] Publicando STOMP en destino '{}'", destination);
+        messagingTemplate.convertAndSend(destination, notification);
+
+        return notification;
     }
 
     // --------
