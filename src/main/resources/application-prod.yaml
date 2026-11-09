@@ -1,0 +1,9 @@
+spring:
+  h2:
+    console:
+      enabled: false
+
+security:
+  jwt:
+    # En producción JWT_SECRET es obligatorio (sin valor por defecto).
+    key-private: ${JWT_SECRET}

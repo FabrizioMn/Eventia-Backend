@@ -6,6 +6,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -17,6 +18,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -41,16 +43,30 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
 
-                if (jwtUtils.isTokenValid(token, userDetails)) {
+                if (!userDetails.isEnabled()) {
+                    SecurityContextHolder.clearContext();
+                    log.warn("[JWT] Usuario desactivado. Se rechaza la autenticación para: {}",
+                            userDetails.getUsername());
+                } else if (!userDetails.isAccountNonLocked()) {
+                    SecurityContextHolder.clearContext();
+                    log.warn("[JWT] Usuario bloqueado. Se rechaza la autenticación para: {}",
+                            userDetails.getUsername());
+                } else if (jwtUtils.isTokenValid(token, userDetails)) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails, null, userDetails.getAuthorities()
                     );
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+                    // Solo con fines académicos: se registra el header/token y claims para la sustentación.
+                    log.info("[JWT] Authorization recibido | header={} | {} {}", authHeader, request.getMethod(), request.getRequestURI());
+                    log.info("[JWT] Token validado | sub={} | claim role={} | authorities(BD)={} | {} {}",
+                            userEmail, jwtUtils.extractRole(token), userDetails.getAuthorities(),
+                            request.getMethod(), request.getRequestURI());
                 }
             }
         } catch (JwtException | UsernameNotFoundException | IllegalArgumentException e) {
             SecurityContextHolder.clearContext();
+            log.warn("[JWT] Token inválido o expirado. Se rechaza la autenticación.");
         }
         filterChain.doFilter(request, response);
     }

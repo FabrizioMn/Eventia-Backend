@@ -1,34 +1,114 @@
 package com.backend.eventia.controller;
 
-import com.backend.eventia.dto.TicketTypeResponseDto;
-import com.backend.eventia.repository.TicketTypeRepository;
+import com.backend.eventia.dto.tickettype.TicketTypeRequestDto;
+import com.backend.eventia.dto.tickettype.TicketTypeResponseDto;
+import com.backend.eventia.service.TicketTypeService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 public class TicketTypeController {
 
-    private final TicketTypeRepository ticketTypeRepository;
+    private final TicketTypeService ticketTypeService;
 
-    @GetMapping({"/ticket-types", "/ticket_types"})
-    public ResponseEntity<List<TicketTypeResponseDto>> list(@RequestParam(name = "id_event", required = false) Long eventId) {
-        var items = eventId != null ? ticketTypeRepository.findByEventId(eventId) : ticketTypeRepository.findAll();
-        List<TicketTypeResponseDto> result = items.stream()
-                .filter(t -> t.isActive())
-                .map(t -> new TicketTypeResponseDto(
-                        t.getId() != null ? String.valueOf(t.getId()) : null,
-                        t.getEvent() != null ? t.getEvent().getId() : null,
-                        t.getName(),
-                        t.getPrice(),
-                        t.getAvailableCapacity()
-                ))
-                .toList();
-        return ResponseEntity.ok(result);
+    @GetMapping("/api/events/{eventId}/ticket-types")
+    public ResponseEntity<List<TicketTypeResponseDto>> findByEvent(
+            @PathVariable Long eventId,
+            @RequestParam(required = false, defaultValue = "false") boolean includeInactive
+    ) {
+        log.debug("[TicketTypeController] GET /api/events/{}/ticket-types - Listando tarifas (includeInactive={})", eventId, includeInactive);
+
+        List<TicketTypeResponseDto> tickets = ticketTypeService.findByEvent(eventId, includeInactive);
+        return ResponseEntity.ok(tickets);
+    }
+
+    @GetMapping("/api/events/{eventId}/ticket-types/page")
+    public ResponseEntity<Page<TicketTypeResponseDto>> findByEventPaged(
+            @PathVariable Long eventId,
+            @RequestParam(required = false, defaultValue = "false") boolean includeInactive,
+            @PageableDefault(size = 10, sort = "price", direction = Sort.Direction.ASC) Pageable pageable
+    ) {
+        log.debug("[TicketTypeController] GET /api/events/{}/ticket-types/page - Listando tarifas paginadas", eventId);
+
+        Page<TicketTypeResponseDto> page = ticketTypeService.findByEvent(eventId, includeInactive, pageable);
+        return ResponseEntity.ok(page);
+    }
+
+    @GetMapping("/api/ticket-types/{id}")
+    public ResponseEntity<TicketTypeResponseDto> findById(@PathVariable Long id) {
+        log.debug("[TicketTypeController] GET /api/ticket-types/{} - Consultando tarifa por ID", id);
+
+        TicketTypeResponseDto ticket = ticketTypeService.findById(id);
+        return ResponseEntity.ok(ticket);
+    }
+
+    @PostMapping("/api/events/{eventId}/ticket-types")
+    @PreAuthorize("hasAnyRole('ORGANIZER', 'ADMIN')")
+    public ResponseEntity<TicketTypeResponseDto> create(
+            @PathVariable Long eventId,
+            @RequestBody @Valid TicketTypeRequestDto request,
+            Authentication authentication
+    ) {
+        log.info("[TicketTypeController] POST /api/events/{}/ticket-types - Creando tarifa nombre='{}' por usuario='{}'",
+                eventId, request.name(), authentication.getName());
+
+        TicketTypeResponseDto created = ticketTypeService.create(eventId, request, authentication.getName());
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @PutMapping("/api/ticket-types/{id}")
+    @PreAuthorize("hasAnyRole('ORGANIZER', 'ADMIN')")
+    public ResponseEntity<TicketTypeResponseDto> update(
+            @PathVariable Long id,
+            @RequestBody @Valid TicketTypeRequestDto request,
+            Authentication authentication
+    ) {
+        log.info("[TicketTypeController] PUT /api/ticket-types/{} - Actualizando tarifa nombre='{}' por usuario='{}'",
+                id, request.name(), authentication.getName());
+
+        TicketTypeResponseDto updated = ticketTypeService.update(id, request, authentication.getName());
+        return ResponseEntity.ok(updated);
+    }
+
+    @PatchMapping("/api/ticket-types/{id}/status")
+    @PreAuthorize("hasAnyRole('ORGANIZER', 'ADMIN')")
+    public ResponseEntity<Void> updateStatus(
+            @PathVariable Long id,
+            @RequestParam boolean active,
+            Authentication authentication
+    ) {
+        log.info("[TicketTypeController] PATCH /api/ticket-types/{}/status - Cambiando estado activo a active={} por usuario='{}'",
+                id, active, authentication.getName());
+
+        ticketTypeService.updateStatus(id, active, authentication.getName());
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/api/ticket-types/{id}")
+    @PreAuthorize("hasAnyRole('ORGANIZER', 'ADMIN')")
+    public ResponseEntity<Void> delete(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        log.info("[TicketTypeController] DELETE /api/ticket-types/{} - Solicitando eliminación por usuario='{}'",
+                id, authentication.getName());
+
+        ticketTypeService.delete(id, authentication.getName());
+        return ResponseEntity.noContent().build();
     }
 }
+

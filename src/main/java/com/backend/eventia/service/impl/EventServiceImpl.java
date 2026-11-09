@@ -1,11 +1,14 @@
 package com.backend.eventia.service.impl;
 
-import com.backend.eventia.dto.EventInactivateRequestDto;
-import com.backend.eventia.dto.EventRequestDto;
 import com.backend.eventia.dto.EventResponseDto;
+import com.backend.eventia.dto.event.EventDetailResponseDto;
+import com.backend.eventia.dto.event.EventRequestDto;
+import com.backend.eventia.dto.event.EventSummaryResponseDto;
+import com.backend.eventia.exception.DuplicateResourceException;
 import com.backend.eventia.exception.ResourceNotFoundException;
 import com.backend.eventia.model.Category;
 import com.backend.eventia.model.Event;
+import com.backend.eventia.model.TicketType;
 import com.backend.eventia.model.User;
 import com.backend.eventia.model.enums.EventStatus;
 import com.backend.eventia.model.enums.UserRole;
@@ -14,15 +17,22 @@ import com.backend.eventia.repository.EventRepository;
 import com.backend.eventia.repository.UserRepository;
 import com.backend.eventia.service.EventService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class EventServiceImpl implements EventService {
 
     private final EventRepository eventRepository;
@@ -30,188 +40,325 @@ public class EventServiceImpl implements EventService {
     private final UserRepository userRepository;
 
     @Override
-    public EventResponseDto create(EventRequestDto request, String organizerEmail) {
-        User organizer = requireUser(organizerEmail);
-        requireOrganizerOrAdmin(organizer);
+    @Transactional(readOnly = true)
+    public Page<EventSummaryResponseDto> findAll(boolean includeInactive, Pageable pageable) {
+        log.debug("[Event] findAll(includeInactive={}, page={}, size={})",
+                includeInactive, pageable.getPageNumber(), pageable.getPageSize());
 
-        Category category = categoryRepository.findById(request.categoryId())
-                .orElseThrow(() -> new ResourceNotFoundException("Categoria no encontrada con id " + request.categoryId()));
-        if (!category.isActive()) {
-            throw new IllegalArgumentException("La categoria seleccionada no esta activa");
+        // Para el catálogo general, solo se listan eventos activos y publicados
+        Page<Event> events = includeInactive
+                ? eventRepository.findAll(pageable)
+                : eventRepository.findByActiveTrueAndStatus(EventStatus.PUBLISHED, pageable);
+
+        log.debug("[Event] findAll -> {} eventos publicados encontrados en página {}", events.getNumberOfElements(), pageable.getPageNumber());
+        return events.map(this::toSummaryDto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<EventResponseDto> findAllActive() {
+        List<EventResponseDto> events = eventRepository.findAll().stream()
+                .filter(Event::isActive)
+                .map(this::toDto)
+                .toList();
+
+        log.debug("[Event] findAllActive -> {} eventos", events.size());
+        return events;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<EventSummaryResponseDto> findByOrganizer(String organizerEmail, boolean includeInactive, Pageable pageable) {
+        log.debug("[Event] findByOrganizer(organizerEmail='{}', includeInactive={}, page={}, size={})",
+                organizerEmail, includeInactive, pageable.getPageNumber(), pageable.getPageSize());
+
+        User organizer = getUserOrThrow(organizerEmail);
+
+        Page<Event> events = includeInactive
+                ? eventRepository.findByOrganizerId(organizer.getId(), pageable)
+                : eventRepository.findByOrganizerIdAndActiveTrue(organizer.getId(), pageable);
+
+        log.debug("[Event] findByOrganizer -> {} eventos propios encontrados", events.getNumberOfElements());
+        return events.map(this::toSummaryDto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public EventDetailResponseDto findById(Long id) {
+        log.debug("[Event] Buscando evento id={}", id);
+        Event event = getEventOrThrow(id);
+
+        if ((!event.isActive() || event.getStatus() != EventStatus.PUBLISHED) && !isAuthorizedToViewUnpublished(event)) {
+            log.warn("[Event] Intento no autorizado de consultar evento no publicado o inactivo id={}", id);
+            throw new ResourceNotFoundException("No se encontró el evento con el id: " + id);
         }
-        validateTimes(request);
+
+        return toDetailDto(event);
+    }
+
+    @Override
+    @Transactional
+    public EventDetailResponseDto create(EventRequestDto request, String organizerEmail) {
+        String title = request.title().trim();
+        log.info("[Event] Creando evento '{}' para organizador='{}'", title, organizerEmail);
+
+        User organizer = getUserOrThrow(organizerEmail);
+        Category category = getCategoryOrThrow(request.categoryId());
+
+        validateSchedule(request.date(), request.startTime(), request.endTime());
+        ensureTitleIsAvailable(title, organizer.getId(), null);
+
+        // Por defecto se crea en DRAFT si no se especifica; se rechazan estados administrativos finales
+        EventStatus initialStatus = request.status() != null ? request.status() : EventStatus.DRAFT;
+        if (initialStatus == EventStatus.CANCELLED || initialStatus == EventStatus.FINISHED) {
+            log.warn("[Event] Estado inicial inválido al crear evento: {}", initialStatus);
+            throw new IllegalArgumentException("No se puede crear un evento directamente con estado " + initialStatus);
+        }
 
         Event event = Event.builder()
-                .title(request.title().trim())
+                .title(title)
                 .description(request.description())
                 .date(request.date())
                 .startTime(request.startTime())
                 .endTime(request.endTime())
-                .location(request.location().trim())
-                .city(request.city() != null ? request.city().trim() : null)
+                .location(request.location())
                 .capacity(request.capacity())
-                .availableCapacity(request.capacity())
-                .status(request.status() != null ? request.status() : EventStatus.BORRADOR)
+                .bannerUrl(request.bannerUrl() != null && !request.bannerUrl().isBlank() ? request.bannerUrl().trim() : null)
+                .status(initialStatus)
                 .active(true)
                 .category(category)
                 .organizer(organizer)
                 .build();
 
-        return toResponse(eventRepository.save(event));
+        eventRepository.save(event);
+        log.info("[Event] Evento creado exitosamente id={} título='{}'", event.getId(), event.getTitle());
+
+        return toDetailDto(event);
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public List<EventResponseDto> listPublic() {
-        return eventRepository.findByActiveTrueAndStatus(EventStatus.PUBLICADO).stream()
-                .map(this::toResponse)
-                .toList();
-    }
+    @Transactional
+    public EventDetailResponseDto update(Long id, EventRequestDto request, String userEmail) {
+        log.info("[Event] Actualizando evento id={} por usuario='{}'", id, userEmail);
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<EventResponseDto> listByOrganizer(String organizerEmail) {
-        User organizer = requireUser(organizerEmail);
-        return eventRepository.findByOrganizerId(organizer.getId()).stream()
-                .map(this::toResponse)
-                .toList();
-    }
+        Event event = getEventOrThrow(id);
+        User user = getUserOrThrow(userEmail);
+        validateOwnership(event, user);
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<EventResponseDto> listAll() {
-        return eventRepository.findAll().stream().map(this::toResponse).toList();
-    }
+        String newTitle = request.title().trim();
+        ensureTitleIsAvailable(newTitle, event.getOrganizer().getId(), event);
 
-    @Override
-    @Transactional(readOnly = true)
-    public EventResponseDto getById(Long id) {
-        return toResponse(requireEvent(id));
-    }
+        Category category = getCategoryOrThrow(request.categoryId());
+        validateSchedule(request.date(), request.startTime(), request.endTime());
 
-    @Override
-    @Transactional(readOnly = true)
-    public EventResponseDto getPublicById(Long id) {
-        Event event = eventRepository.findByIdAndActiveTrue(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Evento no encontrado con id " + id));
-        if (event.getStatus() != EventStatus.PUBLICADO) {
-            throw new ResourceNotFoundException("Evento no encontrado con id " + id);
-        }
-        return toResponse(event);
-    }
-
-    @Override
-    public EventResponseDto update(Long id, EventRequestDto request, String actorEmail) {
-        User actor = requireUser(actorEmail);
-        Event event = requireEvent(id);
-        requireOwnerOrAdmin(actor, event);
-        validateTimes(request);
-
-        Category category = categoryRepository.findById(request.categoryId())
-                .orElseThrow(() -> new ResourceNotFoundException("Categoria no encontrada con id " + request.categoryId()));
-        if (!category.isActive()) {
-            throw new IllegalArgumentException("La categoria seleccionada no esta activa");
-        }
-
-        event.setTitle(request.title().trim());
+        event.setTitle(newTitle);
         event.setDescription(request.description());
         event.setDate(request.date());
         event.setStartTime(request.startTime());
         event.setEndTime(request.endTime());
-        event.setLocation(request.location().trim());
-        event.setCity(request.city() != null ? request.city().trim() : null);
+        event.setLocation(request.location());
         event.setCapacity(request.capacity());
-        if (event.getAvailableCapacity() == null || event.getAvailableCapacity() > request.capacity()) {
-            event.setAvailableCapacity(request.capacity());
-        }
         event.setCategory(category);
+
+        if (request.bannerUrl() != null) {
+            String banner = request.bannerUrl().trim();
+            event.setBannerUrl(banner.isEmpty() ? null : banner);
+        }
         if (request.status() != null) {
+            validateStatusTransition(event.getStatus(), request.status());
             event.setStatus(request.status());
         }
-        if (event.isActive()) {
-            event.setInactivationReason(null);
+
+        event = eventRepository.saveAndFlush(event);
+        log.info("[Event] Evento actualizado id={} título='{}'", event.getId(), event.getTitle());
+
+        return toDetailDto(event);
+    }
+
+    @Override
+    @Transactional
+    public void updateStatus(Long id, EventStatus status, String userEmail) {
+        log.info("[Event] Cambiando estado de evento id={} a status={} por usuario='{}'", id, status, userEmail);
+
+        Event event = getEventOrThrow(id);
+        User user = getUserOrThrow(userEmail);
+        validateOwnership(event, user);
+        validateStatusTransition(event.getStatus(), status);
+
+        event.setStatus(status);
+        eventRepository.save(event);
+
+        log.info("[Event] Estado de evento actualizado id={} status={}", event.getId(), event.getStatus());
+    }
+
+    @Override
+    @Transactional
+    public void updateActive(Long id, boolean active, String userEmail) {
+        log.info("[Event] Cambiando estado de activación id={} active={} por usuario='{}'", id, active, userEmail);
+
+        Event event = getEventOrThrow(id);
+        User user = getUserOrThrow(userEmail);
+        validateOwnership(event, user);
+
+        event.setActive(active);
+        if (!active && event.getStatus() != EventStatus.FINISHED) {
+            event.setStatus(EventStatus.HIDDEN);
+        } else if (active && event.getStatus() == EventStatus.HIDDEN) {
+            event.setStatus(EventStatus.DRAFT);
         }
 
-        return toResponse(event);
+        eventRepository.save(event);
+        log.info("[Event] Visibilidad activa de evento actualizada id={} active={}", event.getId(), event.isActive());
     }
 
-    @Override
-    public EventResponseDto inactivate(Long id, EventInactivateRequestDto request, String actorEmail) {
-        User actor = requireUser(actorEmail);
-        Event event = requireEvent(id);
-        requireOwnerOrAdmin(actor, event);
+    // --------
+    // Helpers
+    // --------
 
-        event.setActive(false);
-        event.setStatus(EventStatus.OCULTO);
-        event.setInactivationReason(request.reason());
-        return toResponse(event);
-    }
-
-    @Override
-    public void softDelete(Long id, String actorEmail) {
-        User actor = requireUser(actorEmail);
-        Event event = requireEvent(id);
-        requireOwnerOrAdmin(actor, event);
-
-        event.setActive(false);
-        event.setStatus(EventStatus.OCULTO);
-    }
-
-    private Event requireEvent(Long id) {
+    private Event getEventOrThrow(Long id) {
         return eventRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Evento no encontrado con id " + id));
+                .orElseThrow(() -> {
+                    log.warn("[Event] No se encontró el evento con id={}", id);
+                    return new ResourceNotFoundException("No se encontró el evento con el id: " + id);
+                });
     }
 
-    private User requireUser(String email) {
+    private Category getCategoryOrThrow(Long categoryId) {
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> {
+                    log.warn("[Event] Categoría id={} no encontrada", categoryId);
+                    return new ResourceNotFoundException("No se encontró la categoría con el id: " + categoryId);
+                });
+
+        if (!category.isActive()) {
+            log.warn("[Event] Rechazado: la categoría id={} '{}' está inactiva", categoryId, category.getName());
+            throw new IllegalArgumentException("La categoría '" + category.getName() + "' está inactiva y no puede ser asignada a eventos.");
+        }
+
+        return category;
+    }
+
+    private User getUserOrThrow(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con email " + email));
+                .orElseThrow(() -> {
+                    log.warn("[Event] Usuario email='{}' no encontrado", email);
+                    return new ResourceNotFoundException("No se encontró el usuario con el email: " + email);
+                });
     }
 
-    private void requireOrganizerOrAdmin(User user) {
-        if (user.getRole() != UserRole.ORGANIZER && user.getRole() != UserRole.ADMIN) {
-            throw new AccessDeniedException("Solo organizadores o administradores pueden gestionar eventos");
+    private boolean isAuthorizedToViewUnpublished(Event event) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getName())) {
+            return false;
         }
+
+        return userRepository.findByEmail(auth.getName())
+                .map(u -> u.getRole() == UserRole.ADMIN || event.getOrganizer().getId().equals(u.getId()))
+                .orElse(false);
     }
 
-    private void requireOwnerOrAdmin(User actor, Event event) {
-        boolean isAdmin = actor.getRole() == UserRole.ADMIN;
-        boolean isOwner = event.getOrganizer() != null && event.getOrganizer().getId().equals(actor.getId());
+    private void validateOwnership(Event event, User user) {
+        boolean isAdmin = user.getRole() == UserRole.ADMIN;
+        boolean isOwner = event.getOrganizer().getId().equals(user.getId());
+
         if (!isAdmin && !isOwner) {
-            throw new AccessDeniedException("No tiene permisos para modificar este evento");
-        }
-        if (!isAdmin && actor.getRole() != UserRole.ORGANIZER) {
-            throw new AccessDeniedException("No tiene permisos para modificar este evento");
+            log.warn("[Event] Acceso denegado: usuario id={} no es dueño del evento id={}", user.getId(), event.getId());
+            throw new AccessDeniedException("No tienes permisos para modificar este evento");
         }
     }
 
-    private void validateTimes(EventRequestDto request) {
-        if (request.endTime() != null && request.startTime() != null && !request.endTime().isAfter(request.startTime())) {
+    private void validateSchedule(LocalDate date, LocalTime startTime, LocalTime endTime) {
+        if (date != null && date.isBefore(LocalDate.now())) {
+            log.warn("[Event] Fecha inválida en el pasado: date={}", date);
+            throw new IllegalArgumentException("La fecha del evento no puede ser anterior a la fecha actual");
+        }
+        if (!endTime.isAfter(startTime)) {
+            log.warn("[Event] Horario inválido: startTime={}, endTime={}", startTime, endTime);
             throw new IllegalArgumentException("La hora de fin debe ser posterior a la hora de inicio");
         }
     }
 
-    private EventResponseDto toResponse(Event event) {
-        String organizerName = event.getOrganizer() != null
-                ? (event.getOrganizer().getFirstName() + " " + event.getOrganizer().getLastName()).trim()
-                : null;
+    private void validateStatusTransition(EventStatus currentStatus, EventStatus targetStatus) {
+        if (currentStatus == null || targetStatus == null || currentStatus == targetStatus) {
+            return;
+        }
+        if (currentStatus == EventStatus.CANCELLED || currentStatus == EventStatus.FINISHED) {
+            log.warn("[Event] Transición de estado inválida: {} -> {}", currentStatus, targetStatus);
+            throw new IllegalStateException("No se puede cambiar el estado de un evento que ya está " + currentStatus);
+        }
+    }
+
+    private void ensureTitleIsAvailable(String title, Long organizerId, Event currentEvent) {
+        if (currentEvent != null && currentEvent.getTitle().equalsIgnoreCase(title)) {
+            return;
+        }
+
+        if (eventRepository.existsByTitleIgnoreCaseAndOrganizerId(title, organizerId)) {
+            log.warn("[Event] Título duplicado para organizador id={}: '{}'", organizerId, title);
+            throw new DuplicateResourceException("Ya tienes un evento registrado con el título: " + title);
+        }
+    }
+
+    private EventResponseDto toDto(Event event) {
+        // Precio más barato y % vendido desde los tipos de entrada
+        List<TicketType> tickets = event.getTicketTypes() == null ? List.of() : event.getTicketTypes();
+        Double price = tickets.stream()
+                .map(TicketType::getPrice)
+                .min(Double::compareTo)
+                .orElse(0.0);
+
+        int total = tickets.stream().mapToInt(TicketType::getTotalCapacity).sum();
+        int available = tickets.stream().mapToInt(TicketType::getAvailableCapacity).sum();
+        int soldPct = total > 0 ? Math.round((float) (total - available) / total * 100) : 0;
+
         return new EventResponseDto(
-                event.getId() != null ? String.valueOf(event.getId()) : null,
+                event.getId(),
+                event.getTitle(),
+                event.getDescription(),
+                event.getDate(),
+                event.getLocation(),
+                event.getCapacity(),
+                event.getStatus() != null ? event.getStatus().name() : null,
+                event.getCategory() == null ? "" : event.getCategory().getName(),
+                price,
+                soldPct
+        );
+    }
+
+    private EventSummaryResponseDto toSummaryDto(Event event) {
+        return new EventSummaryResponseDto(
+                event.getId(),
                 event.getTitle(),
                 event.getDescription(),
                 event.getDate(),
                 event.getStartTime(),
                 event.getEndTime(),
                 event.getLocation(),
-                event.getCity(),
                 event.getCapacity(),
-                event.getAvailableCapacity(),
+                event.getBannerUrl(),
+                event.getCategory() != null ? event.getCategory().getName() : null,
+                event.getStatus(),
+                event.isActive()
+        );
+    }
+
+    private EventDetailResponseDto toDetailDto(Event event) {
+        return new EventDetailResponseDto(
+                event.getId(),
+                event.getTitle(),
+                event.getDescription(),
+                event.getDate(),
+                event.getStartTime(),
+                event.getEndTime(),
+                event.getLocation(),
+                event.getCapacity(),
+                event.getBannerUrl(),
                 event.getStatus(),
                 event.isActive(),
-                event.getInactivationReason(),
-                event.getCategory() != null ? String.valueOf(event.getCategory().getId()) : null,
+                event.getCategory() != null ? event.getCategory().getId() : null,
                 event.getCategory() != null ? event.getCategory().getName() : null,
                 event.getOrganizer() != null ? event.getOrganizer().getId() : null,
-                organizerName,
+                event.getOrganizer() != null ? (event.getOrganizer().getFirstName() + " " + event.getOrganizer().getLastName()) : null,
                 event.getCreatedAt(),
                 event.getUpdatedAt()
         );
