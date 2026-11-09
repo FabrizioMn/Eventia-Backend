@@ -33,6 +33,10 @@ public class OrderDetail {
     @Column(nullable = false)
     private Double subtotal;
 
+    @Column(name = "discount_applied", nullable = false)
+    @Builder.Default
+    private Double discountApplied = 0.0;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_order", nullable = false)
     private Order order;

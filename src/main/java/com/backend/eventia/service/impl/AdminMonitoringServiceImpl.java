@@ -139,10 +139,6 @@ public class AdminMonitoringServiceImpl implements AdminMonitoringService {
                 if (createdAt != null && YearMonth.from(createdAt).equals(month)) {
                     issued++;
                 }
-                LocalDateTime redeemedAt = ticket.getRedeemedAt();
-                if (redeemedAt != null && YearMonth.from(redeemedAt).equals(month)) {
-                    redeemed++;
-                }
             }
 
             flow.add(new TicketFlowResponseDto(

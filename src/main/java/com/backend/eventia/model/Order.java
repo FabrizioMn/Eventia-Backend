@@ -1,5 +1,6 @@
 package com.backend.eventia.model;
 
+import com.backend.eventia.model.enums.OrderStatus;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -33,8 +34,13 @@ public class Order {
     @Column(name = "payment_method", nullable = false)
     private String paymentMethod;
 
+    @Column(name = "discount_amount", nullable = false)
+    @Builder.Default
+    private Double discountAmount = 0.0;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "payment_status", nullable = false)
-    private String paymentStatus;
+    private OrderStatus paymentStatus;
 
     @CreationTimestamp
     @Column(name = "created_at")
