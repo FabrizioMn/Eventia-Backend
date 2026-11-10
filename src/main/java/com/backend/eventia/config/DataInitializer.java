@@ -67,6 +67,30 @@ public class DataInitializer {
                         .build());
             }
 
+            if (userRepository.findByEmail("cliente@eventia.com").isEmpty()) {
+                userRepository.save(User.builder()
+                        .firstName("Ana")
+                        .lastName("Cliente")
+                        .dni("30000003")
+                        .email("cliente@eventia.com")
+                        .cellphone("999888777")
+                        .password(passwordEncoder.encode("cliente123"))
+                        .role(UserRole.USER)
+                        .build());
+            }
+
+            if (userRepository.findByEmail("roberto@eventia.com").isEmpty()) {
+                userRepository.save(User.builder()
+                        .firstName("Roberto")
+                        .lastName("Promo")
+                        .dni("40000004")
+                        .email("roberto@eventia.com")
+                        .cellphone("987654324")
+                        .password(passwordEncoder.encode("roberto123"))
+                        .role(UserRole.USER)
+                        .build());
+            }
+
             seedCategories();
 
             if (eventRepository.count() == 0) {
