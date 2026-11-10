@@ -10,7 +10,6 @@ import com.backend.eventia.repository.CategoryRepository;
 import com.backend.eventia.repository.EventRepository;
 import com.backend.eventia.repository.TicketTypeRepository;
 import com.backend.eventia.repository.UserRepository;
-import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -39,22 +38,9 @@ public class DataInitializer {
     private final EventRepository eventRepository;
     private final TicketTypeRepository ticketTypeRepository;
     private final PasswordEncoder passwordEncoder;
-    private final EntityManager entityManager;
-
     @Bean
     CommandLineRunner initData() {
         return args -> {
-            // La columna qr_code ya no se usa (QR eliminado del sistema); permitir nulos
-            // para que los inserts de tickets no fallen en esquemas existentes.
-            try {
-                entityManager.createNativeQuery(
-                        "ALTER TABLE tickets ALTER COLUMN qr_code DROP NOT NULL"
-                ).executeUpdate();
-                log.info("[DataInitializer] Columna tickets.qr_code ahora permite nulos");
-            } catch (Exception ex) {
-                log.warn("[DataInitializer] No se pudo alterar columna qr_code: {}", ex.getMessage());
-            }
-
             if (userRepository.findByEmail("admin@eventia.com").isEmpty()) {
                 log.info("[DataInitializer] Creando usuario admin por defecto");
                 userRepository.save(User.builder()
