@@ -7,6 +7,7 @@ import com.backend.eventia.exception.DuplicateResourceException;
 import com.backend.eventia.exception.ResourceNotFoundException;
 import com.backend.eventia.model.Category;
 import com.backend.eventia.model.Event;
+import com.backend.eventia.model.TicketType;
 import com.backend.eventia.model.User;
 import com.backend.eventia.model.enums.EventStatus;
 import com.backend.eventia.model.enums.UserRole;
@@ -27,6 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -318,6 +321,34 @@ public class EventServiceImpl implements EventService {
     }
 
     private EventSummaryResponseDto toSummaryDto(Event event) {
+        // Precio mínimo entre los tipos de entrada activos
+        Double minPrice = event.getTicketTypes().stream()
+                .filter(TicketType::isActive)
+                .map(TicketType::getPrice)
+                .filter(Objects::nonNull)
+                .min(Double::compareTo)
+                .orElse(null);
+
+        // Porcentaje vendido basado en la capacidad total de los tipos de entrada
+        Integer soldPct = null;
+        List<TicketType> ticketTypes = event.getTicketTypes();
+        if (ticketTypes != null && !ticketTypes.isEmpty()) {
+            long totalCapacity = ticketTypes.stream()
+                    .mapToLong(tt -> tt.getTotalCapacity() != null ? tt.getTotalCapacity() : 0)
+                    .sum();
+            long totalSold = ticketTypes.stream()
+                    .mapToLong(tt -> {
+                        Integer total = tt.getTotalCapacity();
+                        Integer available = tt.getAvailableCapacity();
+                        if (total != null && total > 0 && available != null) {
+                            return total - available;
+                        }
+                        return 0L;
+                    })
+                    .sum();
+            soldPct = totalCapacity > 0 ? (int) Math.round(((double) totalSold / totalCapacity) * 100) : 0;
+        }
+
         return new EventSummaryResponseDto(
                 event.getId(),
                 event.getTitle(),
@@ -330,7 +361,9 @@ public class EventServiceImpl implements EventService {
                 event.getBannerUrl(),
                 event.getCategory() != null ? event.getCategory().getName() : null,
                 event.getStatus(),
-                event.isActive()
+                event.isActive(),
+                minPrice,
+                soldPct
         );
     }
 
