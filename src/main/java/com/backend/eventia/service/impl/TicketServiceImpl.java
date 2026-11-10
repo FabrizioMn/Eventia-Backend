@@ -12,6 +12,7 @@ import com.backend.eventia.repository.OrderRepository;
 import com.backend.eventia.repository.TicketRepository;
 import com.backend.eventia.repository.TicketTypeRepository;
 import com.backend.eventia.repository.UserRepository;
+import com.backend.eventia.service.OrganizerDashboardService;
 import com.backend.eventia.service.TicketService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +33,7 @@ public class TicketServiceImpl implements TicketService {
     private final TicketTypeRepository ticketTypeRepository;
     private final OrderRepository orderRepository;
     private final TicketRepository ticketRepository;
+    private final OrganizerDashboardService organizerDashboardService;
 
     private static final int MAX_TICKETS_PER_ORDER = 10;
     private static final double PROMO_DISCOUNT_PCT = 15.0;
@@ -129,6 +131,31 @@ public class TicketServiceImpl implements TicketService {
         Order saved = orderRepository.saveAndFlush(order);
         log.info("[Ticket] Compra creada id={} usuario='{}' total={} entradas={}",
                 saved.getId(), userEmail, totalAmount, totalQuantity);
+
+        // 🔔 Notificación en tiempo real por WebSocket al dashboard del organizador
+        // (una notificación por cada detalle/tarifa comprada)
+        try {
+            String buyerName = user.getFirstName() + " " + user.getLastName();
+            for (OrderDetail detail : saved.getOrderDetails()) {
+                TicketType ticketType = detail.getTicketType();
+                Event event = ticketType.getEvent();
+                if (event == null || event.getOrganizer() == null) {
+                    continue;
+                }
+                organizerDashboardService.broadcastSaleNotification(
+                        event.getOrganizer().getEmail(),
+                        event.getTitle(),
+                        ticketType.getName(),
+                        detail.getQuantity(),
+                        detail.getUnitPrice(),
+                        buyerName
+                );
+            }
+        } catch (Exception ex) {
+            // No fallar la compra si la notificación WS falla
+            log.warn("[Ticket] No se pudo enviar notificación WebSocket para la orden id={}: {}",
+                    saved.getId(), ex.getMessage());
+        }
 
         return toOrderDto(saved);
     }
