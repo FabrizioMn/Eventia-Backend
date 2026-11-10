@@ -99,6 +99,13 @@ public class EventServiceImpl implements EventService {
         ensureTitleIsAvailable(title, organizer.getId(), null);
 
 
+        EventStatus initialStatus = EventStatus.PUBLISHED;
+        if (request.status() == EventStatus.PENDING || request.status() == EventStatus.DRAFT) {
+            initialStatus = EventStatus.PENDING;
+        } else if (request.status() != null) {
+            initialStatus = request.status();
+        }
+
         Event event = Event.builder()
                 .title(title)
                 .description(request.description())
@@ -108,7 +115,7 @@ public class EventServiceImpl implements EventService {
                 .location(request.location())
                 .capacity(request.capacity())
                 .bannerUrl(request.bannerUrl() != null && !request.bannerUrl().isBlank() ? request.bannerUrl().trim() : null)
-                .status(EventStatus.PENDING)
+                .status(initialStatus)
                 .active(true)
                 .category(category)
                 .organizer(organizer)
@@ -152,6 +159,17 @@ public class EventServiceImpl implements EventService {
             event.setBannerUrl(banner.isEmpty() ? null : banner);
         }
 
+        if (request.status() != null) {
+            EventStatus targetStatus = (request.status() == EventStatus.DRAFT) ? EventStatus.PENDING : request.status();
+            if (targetStatus != event.getStatus()) {
+                validateStatusTransition(event.getStatus(), targetStatus);
+                if (targetStatus == EventStatus.PUBLISHED) {
+                    validatePublishable(event);
+                }
+                event.setStatus(targetStatus);
+            }
+        }
+
         event = eventRepository.saveAndFlush(event);
         log.info("[Event] Evento actualizado id={} título='{}'", event.getId(), event.getTitle());
 
@@ -167,14 +185,15 @@ public class EventServiceImpl implements EventService {
         User user = getUserOrThrow(userEmail);
         validateOrganizerRole(user);
         validateOwnership(event, user);
-        validateStatusTransition(event.getStatus(), status);
-        validateStatusChangePermission(user, status);
+        EventStatus targetStatus = (status == EventStatus.DRAFT) ? EventStatus.PENDING : status;
+        validateStatusTransition(event.getStatus(), targetStatus);
+        validateStatusChangePermission(user, targetStatus);
 
-        if (status == EventStatus.PUBLISHED && event.getStatus() != EventStatus.PUBLISHED) {
+        if (targetStatus == EventStatus.PUBLISHED && event.getStatus() != EventStatus.PUBLISHED) {
             validatePublishable(event);
         }
 
-        event.setStatus(status);
+        event.setStatus(targetStatus);
         eventRepository.save(event);
 
         log.info("[Event] Estado de evento actualizado id={} status={}", event.getId(), event.getStatus());

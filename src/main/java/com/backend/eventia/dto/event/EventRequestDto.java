@@ -1,5 +1,6 @@
 package com.backend.eventia.dto.event;
 
+import com.backend.eventia.model.enums.EventStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -39,6 +40,12 @@ public record EventRequestDto(
         Long categoryId,
 
         @Size(max = 500, message = "La URL del banner no puede superar los 500 caracteres")
-        String bannerUrl
+        String bannerUrl,
+
+        EventStatus status
 ) {
+    public EventRequestDto(String title, String description, LocalDate date, LocalTime startTime, LocalTime endTime,
+                           String location, Integer capacity, Long categoryId, String bannerUrl) {
+        this(title, description, date, startTime, endTime, location, capacity, categoryId, bannerUrl, null);
+    }
 }
