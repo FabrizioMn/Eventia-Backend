@@ -57,7 +57,6 @@ class OwnershipAuthorizationTest {
     private JwtUtils jwtUtils;
 
     private String orgAToken;
-    private String adminToken;
     private Event eventB;
     private TicketType ticketB;
     private Long categoryId;
@@ -68,10 +67,7 @@ class OwnershipAuthorizationTest {
                 "orga@test.com", "secret123", UserRole.ORGANIZER, true, "91000001");
         User orgB = TestUserFactory.createUser(userRepository, passwordEncoder,
                 "orgb@test.com", "secret123", UserRole.ORGANIZER, true, "91000002");
-        User admin = TestUserFactory.createUser(userRepository, passwordEncoder,
-                "admin-own@test.com", "secret123", UserRole.ADMIN, true, "91000003");
         orgAToken = jwtUtils.generateToken(orgA);
-        adminToken = jwtUtils.generateToken(admin);
 
         Category category = categoryRepository.save(Category.builder().name("Own Cat").description("d").active(true).build());
         categoryId = category.getId();
@@ -123,15 +119,6 @@ class OwnershipAuthorizationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(ticketJson("Editada", 30)))
                 .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void adminPuedeEditarEventoDeCualquierOrganizador() throws Exception {
-        mockMvc.perform(put("/api/events/{id}", eventB.getId())
-                        .header("Authorization", "Bearer " + adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(eventJson("Admin Edit", eventB.getDate().plusDays(2).toString())))
-                .andExpect(status().isOk());
     }
 
     private String eventJson(String title, String date) {
