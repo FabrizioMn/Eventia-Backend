@@ -92,7 +92,9 @@ public class AuthServiceImpl implements AuthService {
                 user.getId(),
                 user.getFirstName() + " " + user.getLastName(),
                 user.getEmail(),
-                user.getRole().name()
+                user.getRole().name(),
+                user.getDocumentType(),
+                user.getCellphone()
         );
 
         return new AuthResponseDto(
@@ -118,7 +120,9 @@ public class AuthServiceImpl implements AuthService {
                 user.getFirstName(),
                 user.getLastName(),
                 user.getEmail(),
-                user.getRole().name()
+                user.getRole().name(),
+                user.getDocumentType(),
+                user.getCellphone()
         );
     }
 }
