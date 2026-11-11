@@ -84,11 +84,10 @@ El flujo de autenticación principal es:
 
 El endpoint `/auth/me` permite obtener el perfil del usuario correspondiente al token autenticado.
 
-Los roles disponibles en el sistema son:
+Los roles internos disponibles en el sistema son:
 
-- `USER`
-- `ORGANIZER`
-- `ADMIN`
+- `USER` (se muestra como Cliente en la app)
+- `ORGANIZER` (se muestra como Organizador en la app)
 
 ## 🔌 API REST
 
