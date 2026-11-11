@@ -42,17 +42,11 @@ public class DataInitializer {
     @Bean
     CommandLineRunner initData() {
         return args -> {
-            if (userRepository.findByEmail("organizador@eventia.com").isEmpty()) {
-                userRepository.save(User.builder()
-                        .firstName("Carlos")
-                        .lastName("Organizador")
-                        .dni("20000002")
-                        .email("organizador@eventia.com")
-                        .cellphone("987654321")
-                        .password(passwordEncoder.encode("organizer123"))
-                        .role(UserRole.ORGANIZER)
-                        .build());
-            }
+            createUserIfMissing("Organizador", "Uno", "20000002", "organizer1@eventia.com", "987654321", UserRole.ORGANIZER);
+            createUserIfMissing("Organizador", "Dos", "20000003", "organizer2@eventia.com", "987654322", UserRole.ORGANIZER);
+            createUserIfMissing("Cliente", "Uno", "30000001", "cliente1@eventia.com", "911111111", UserRole.USER);
+            createUserIfMissing("Cliente", "Dos", "30000002", "cliente2@eventia.com", "922222222", UserRole.USER);
+            createUserIfMissing("Cliente", "Tres", "30000003", "cliente3@eventia.com", "933333333", UserRole.USER);
 
             seedCategories();
 
@@ -61,6 +55,23 @@ public class DataInitializer {
                 seedCatalog();
             }
         };
+    }
+
+    private void createUserIfMissing(String firstName, String lastName, String dni, String email,
+                                     String cellphone, UserRole role) {
+        if (userRepository.findByEmail(email).isPresent()) {
+            return;
+        }
+        userRepository.save(User.builder()
+                .firstName(firstName)
+                .lastName(lastName)
+                .dni(dni)
+                .email(email)
+                .cellphone(cellphone)
+                .password(passwordEncoder.encode("Eventia123*"))
+                .role(role)
+                .build());
+        log.info("[DataInitializer] Usuario de prueba creado email='{}' rol={}", email, role);
     }
 
     private void seedCategories() {
@@ -79,7 +90,7 @@ public class DataInitializer {
     }
 
     private void seedCatalog() {
-        User organizer = userRepository.findByEmail("organizador@eventia.com").orElseThrow();
+        User organizer = userRepository.findByEmail("organizer1@eventia.com").orElseThrow();
 
         Category conciertos = getOrCreateCategory("Conciertos", "Presentaciones musicales en vivo, festivales y recitales.");
         Category festivales = getOrCreateCategory("Festivales", "Grandes encuentros artísticos, gastronómicos y temáticos.");
