@@ -60,31 +60,48 @@ public class AuthServiceImpl implements AuthService {
     public AuthResponseDto register(RegisterRequestDto request) {
 
         String email = request.email().trim().toLowerCase();
-        log.info("[Auth] Recibida petición de REGISTRO para: {}", email);
+        String documento = request.dni().trim();
+        UserRole role = mapRole(request.role());
+        log.info("[Auth] Recibida petición de REGISTRO para: {} (rol={})", email, role);
 
-        if (userRepository.existsByEmail(email)) {
+        userRepository.findByEmail(email).ifPresent(existing -> {
+            if (!existing.isActive()) {
+                log.warn("[Auth] REGISTRO rechazado: el email pertenece a una cuenta inactiva -> {}", email);
+                throw new DuplicateResourceException(
+                        "El correo ya está registrado en una cuenta inactiva. Puedes reactivar tu cuenta.");
+            }
             log.warn("[Auth] REGISTRO rechazado: el email ya existe -> {}", email);
-            throw new DuplicateResourceException("El email ya esta registrado");
-        }
+            throw new DuplicateResourceException("El correo ya está registrado.");
+        });
 
-        if (userRepository.existsByDni(request.dni())) {
-            log.warn("[Auth] REGISTRO rechazado: el DNI ya existe -> {}", request.dni());
-            throw new DuplicateResourceException("El DNI ya esta registrado");
+        if (userRepository.existsByDni(documento)) {
+            log.warn("[Auth] REGISTRO rechazado: el documento ya existe -> {}", documento);
+            throw new DuplicateResourceException("El número de documento ya está registrado.");
         }
 
         User user = User.builder()
-                .firstName(request.firstName())
-                .lastName(request.lastName())
-                .dni(request.dni())
+                .firstName(request.firstName().trim())
+                .lastName(request.lastName().trim())
+                .documentType(request.documentType())
+                .dni(documento)
                 .email(email)
+                .cellphone(request.cellphone().trim())
                 .password(passwordEncoder.encode(request.password()))
-                .role(UserRole.USER)
+                .role(role)
                 .build();
         userRepository.save(user);
 
         String token = jwtUtils.generateToken(user);
         log.info("[Auth] REGISTRO exitoso para: {} (id={})", email, user.getId());
         return buildAuthResponse(token, user);
+    }
+
+    private UserRole mapRole(String role) {
+        return switch (role.trim().toUpperCase(java.util.Locale.ROOT)) {
+            case "CLIENTE" -> UserRole.USER;
+            case "ORGANIZADOR" -> UserRole.ORGANIZER;
+            default -> throw new IllegalArgumentException("El rol debe ser CLIENTE u ORGANIZADOR");
+        };
     }
 
     private AuthResponseDto buildAuthResponse(String token, User user) {
