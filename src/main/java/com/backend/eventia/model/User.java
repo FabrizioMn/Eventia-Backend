@@ -1,5 +1,6 @@
 package com.backend.eventia.model;
 
+import com.backend.eventia.model.enums.TipoDocumento;
 import com.backend.eventia.model.enums.UserRole;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -35,6 +36,11 @@ public class User {
     @Column(nullable = false, unique = true, length = 20)
     private String dni;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "document_type", length = 2)
+    @Builder.Default
+    private TipoDocumento documentType = TipoDocumento.DNI;
+
     @Column(nullable = false, unique = true)
     private String email;
 
@@ -60,4 +66,8 @@ public class User {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    public TipoDocumento getDocumentType() {
+        return documentType != null ? documentType : TipoDocumento.DNI;
+    }
 }
