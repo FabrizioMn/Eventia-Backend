@@ -42,19 +42,6 @@ public class DataInitializer {
     @Bean
     CommandLineRunner initData() {
         return args -> {
-            if (userRepository.findByEmail("admin@eventia.com").isEmpty()) {
-                log.info("[DataInitializer] Creando usuario admin por defecto");
-                userRepository.save(User.builder()
-                        .firstName("Admin")
-                        .lastName("Eventia")
-                        .dni("10000001")
-                        .email("admin@eventia.com")
-                        .cellphone("123456789")
-                        .password(passwordEncoder.encode("admin123"))
-                        .role(UserRole.ADMIN)
-                        .build());
-            }
-
             if (userRepository.findByEmail("organizador@eventia.com").isEmpty()) {
                 userRepository.save(User.builder()
                         .firstName("Carlos")
