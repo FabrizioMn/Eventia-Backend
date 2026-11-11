@@ -84,15 +84,16 @@ El flujo de autenticación principal es:
 
 El endpoint `/auth/me` permite obtener el perfil del usuario correspondiente al token autenticado.
 
-Los roles disponibles en el sistema son:
+Los roles internos disponibles en el sistema son:
 
-- `USER`
-- `ORGANIZER`
-- `ADMIN`
+- `USER` (se muestra como Cliente en la app)
+- `ORGANIZER` (se muestra como Organizador en la app)
 
 ## 🔌 API REST
 
 El backend expone servicios REST para ser consumidos por el frontend de Eventia.
+
+Documentación interactiva (Swagger UI): `http://localhost:8080/swagger-ui.html`.
 
 ### Autenticación
 
@@ -110,6 +111,13 @@ El backend expone servicios REST para ser consumidos por el frontend de Eventia.
 | `/api/events` | GET | Consultar eventos |
 | `/api/events/{id}` | GET | Consultar detalle de un evento |
 | `/api/events/organizer` | GET | Consultar eventos del organizador |
+
+### Usuarios
+
+| **Endpoint** | **Método** | **Descripción** |
+| --- | --- | --- |
+| `/api/users` | GET | Listar clientes compradores de mis eventos (solo ORGANIZER) |
+| `/api/users/me/deactivate` | PATCH | Desactivar la cuenta propia (USER u ORGANIZER) |
 
 La API continúa ampliándose conforme se implementan las funcionalidades de la plataforma.
 

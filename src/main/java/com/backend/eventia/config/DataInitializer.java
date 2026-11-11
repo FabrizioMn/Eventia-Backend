@@ -2,12 +2,18 @@ package com.backend.eventia.config;
 
 import com.backend.eventia.model.Category;
 import com.backend.eventia.model.Event;
+import com.backend.eventia.model.Order;
+import com.backend.eventia.model.OrderDetail;
+import com.backend.eventia.model.Ticket;
 import com.backend.eventia.model.TicketType;
 import com.backend.eventia.model.User;
 import com.backend.eventia.model.enums.EventStatus;
+import com.backend.eventia.model.enums.OrderStatus;
 import com.backend.eventia.model.enums.UserRole;
 import com.backend.eventia.repository.CategoryRepository;
 import com.backend.eventia.repository.EventRepository;
+import com.backend.eventia.repository.OrderRepository;
+import com.backend.eventia.repository.TicketRepository;
 import com.backend.eventia.repository.TicketTypeRepository;
 import com.backend.eventia.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +29,7 @@ import org.springframework.core.type.AnnotatedTypeMetadata;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
@@ -37,35 +44,19 @@ public class DataInitializer {
     private final CategoryRepository categoryRepository;
     private final EventRepository eventRepository;
     private final TicketTypeRepository ticketTypeRepository;
+    private final OrderRepository orderRepository;
+    private final TicketRepository ticketRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Bean
     CommandLineRunner initData() {
         return args -> {
-            if (userRepository.findByEmail("admin@eventia.com").isEmpty()) {
-                log.info("[DataInitializer] Creando usuario admin por defecto");
-                userRepository.save(User.builder()
-                        .firstName("Admin")
-                        .lastName("Eventia")
-                        .dni("10000001")
-                        .email("admin@eventia.com")
-                        .cellphone("123456789")
-                        .password(passwordEncoder.encode("admin123"))
-                        .role(UserRole.ADMIN)
-                        .build());
-            }
-
-            if (userRepository.findByEmail("organizador@eventia.com").isEmpty()) {
-                userRepository.save(User.builder()
-                        .firstName("Carlos")
-                        .lastName("Organizador")
-                        .dni("20000002")
-                        .email("organizador@eventia.com")
-                        .cellphone("987654321")
-                        .password(passwordEncoder.encode("organizer123"))
-                        .role(UserRole.ORGANIZER)
-                        .build());
-            }
+            createUserIfMissing("Organizador", "Uno", "20000002", "organizer1@eventia.com", "987654321", UserRole.ORGANIZER);
+            createUserIfMissing("Organizador", "Dos", "20000003", "organizer2@eventia.com", "987654322", UserRole.ORGANIZER);
+            createUserIfMissing("Cliente", "Uno", "30000001", "cliente1@eventia.com", "911111111", UserRole.USER);
+            createUserIfMissing("Cliente", "Dos", "30000002", "cliente2@eventia.com", "922222222", UserRole.USER);
+            createUserIfMissing("Cliente", "Tres", "30000003", "cliente3@eventia.com", "933333333", UserRole.USER);
+            createUserIfMissing("Cliente", "Inactivo", "30000004", "cliente4@eventia.com", "944444444", UserRole.USER, false);
 
             seedCategories();
 
@@ -73,7 +64,35 @@ public class DataInitializer {
                 log.info("[DataInitializer] Creando eventos y tipos de entrada de ejemplo");
                 seedCatalog();
             }
+
+            if (orderRepository.count() == 0) {
+                seedPurchases();
+            }
         };
+    }
+
+    private void createUserIfMissing(String firstName, String lastName, String dni, String email,
+                                     String cellphone, UserRole role) {
+        createUserIfMissing(firstName, lastName, dni, email, cellphone, role, true);
+    }
+
+    private void createUserIfMissing(String firstName, String lastName, String dni, String email,
+                                     String cellphone, UserRole role, boolean active) {
+        if (userRepository.findByEmail(email).isPresent()) {
+            return;
+        }
+        userRepository.save(User.builder()
+                .firstName(firstName)
+                .lastName(lastName)
+                .dni(dni)
+                .email(email)
+                .cellphone(cellphone)
+                .password(passwordEncoder.encode("Eventia123*"))
+                .role(role)
+                .active(active)
+                .deactivatedAt(active ? null : LocalDateTime.now())
+                .build());
+        log.info("[DataInitializer] Usuario de prueba creado email='{}' rol={} active={}", email, role, active);
     }
 
     private void seedCategories() {
@@ -92,7 +111,7 @@ public class DataInitializer {
     }
 
     private void seedCatalog() {
-        User organizer = userRepository.findByEmail("organizador@eventia.com").orElseThrow();
+        User organizer = userRepository.findByEmail("organizer1@eventia.com").orElseThrow();
 
         Category conciertos = getOrCreateCategory("Conciertos", "Presentaciones musicales en vivo, festivales y recitales.");
         Category festivales = getOrCreateCategory("Festivales", "Grandes encuentros artísticos, gastronómicos y temáticos.");
@@ -114,6 +133,55 @@ public class DataInitializer {
                 LocalDate.of(2027, 1, 25), "Centro de Convenciones 27 de Enero", 3000, tecnologia, organizer, 210.0);
 
         log.info("[DataInitializer] Eventos de ejemplo creados correctamente");
+    }
+
+    private void seedPurchases() {
+        User customer = userRepository.findByEmail("cliente1@eventia.com").orElseThrow();
+        User organizer = userRepository.findByEmail("organizer1@eventia.com").orElseThrow();
+
+        Event event = eventRepository.findByOrganizerIdAndActiveTrue(organizer.getId()).stream()
+                .findFirst()
+                .orElse(null);
+        if (event == null) {
+            return;
+        }
+
+        TicketType ticketType = ticketTypeRepository.findByEventIdAndActiveTrue(event.getId()).stream()
+                .findFirst()
+                .orElse(null);
+        if (ticketType == null) {
+            return;
+        }
+
+        int quantity = 2;
+        double unitPrice = ticketType.getPrice();
+        double subtotal = unitPrice * quantity;
+
+        Order order = Order.builder()
+                .totalAmount(subtotal)
+                .paymentMethod("CARD")
+                .paymentStatus(OrderStatus.PAID)
+                .user(customer)
+                .build();
+        OrderDetail detail = OrderDetail.builder()
+                .quantity(quantity)
+                .unitPrice(unitPrice)
+                .subtotal(subtotal)
+                .order(order)
+                .ticketType(ticketType)
+                .build();
+        order.getOrderDetails().add(detail);
+        orderRepository.save(order);
+
+        ticketType.setAvailableCapacity(Math.max(0, ticketType.getAvailableCapacity() - quantity));
+        ticketTypeRepository.save(ticketType);
+
+        for (int i = 0; i < quantity; i++) {
+            ticketRepository.save(Ticket.builder().orderDetail(detail).build());
+        }
+
+        log.info("[DataInitializer] Orden de prueba creada para '{}' con {} entradas en '{}'",
+                customer.getEmail(), quantity, event.getTitle());
     }
 
     private Category getOrCreateCategory(String name, String description) {

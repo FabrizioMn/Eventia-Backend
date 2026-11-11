@@ -168,7 +168,6 @@ public class EventServiceImpl implements EventService {
         validateOrganizerRole(user);
         validateOwnership(event, user);
         validateStatusTransition(event.getStatus(), status);
-        validateStatusChangePermission(user, status);
 
         if (status == EventStatus.PUBLISHED && event.getStatus() != EventStatus.PUBLISHED) {
             validatePublishable(event);
@@ -237,34 +236,24 @@ public class EventServiceImpl implements EventService {
         }
 
         return userRepository.findByEmail(auth.getName())
-                .map(u -> u.getRole() == UserRole.ADMIN || event.getOrganizer().getId().equals(u.getId()))
+                .map(u -> event.getOrganizer().getId().equals(u.getId()))
                 .orElse(false);
     }
 
     private void validateOwnership(Event event, User user) {
-        boolean isAdmin = user.getRole() == UserRole.ADMIN;
         boolean isOwner = event.getOrganizer().getId().equals(user.getId());
 
-        if (!isAdmin && !isOwner) {
+        if (!isOwner) {
             log.warn("[Event] Acceso denegado: usuario id={} no es dueño del evento id={}", user.getId(), event.getId());
             throw new AccessDeniedException("No tienes permisos para modificar este evento");
         }
     }
 
     private void validateOrganizerRole(User user) {
-        if (user.getRole() != UserRole.ADMIN && user.getRole() != UserRole.ORGANIZER) {
+        if (user.getRole() != UserRole.ORGANIZER) {
             log.warn("[Event] Acceso denegado: usuario id={} rol={} no puede gestionar eventos", user.getId(), user.getRole());
-            throw new AccessDeniedException("Solo un organizador o administrador puede gestionar eventos");
+            throw new AccessDeniedException("Solo un organizador puede gestionar eventos");
         }
-    }
-
-    private void validateStatusChangePermission(User user, EventStatus status) {
-        /*
-        if (user.getRole() == UserRole.ORGANIZER && status == EventStatus.PUBLISHED) {
-            log.warn("[Event] Organizador id={} intentó publicar un evento sin permisos de administrador", user.getId());
-            throw new AccessDeniedException("Solo un administrador puede publicar eventos");
-        }
-        */
     }
 
     private void validatePublishable(Event event) {

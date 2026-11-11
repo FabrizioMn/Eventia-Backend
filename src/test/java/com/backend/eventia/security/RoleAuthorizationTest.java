@@ -44,41 +44,19 @@ class RoleAuthorizationTest {
     @Autowired
     private JwtUtils jwtUtils;
 
-    private String adminToken;
     private String organizerToken;
     private String userToken;
     private Category category;
 
     @BeforeEach
     void setUp() {
-        User admin = TestUserFactory.createUser(userRepository, passwordEncoder,
-                "admin-role@test.com", "secret123", UserRole.ADMIN, true);
         User organizer = TestUserFactory.createUser(userRepository, passwordEncoder,
                 "org-role@test.com", "secret123", UserRole.ORGANIZER, true);
         User user = TestUserFactory.createUser(userRepository, passwordEncoder,
                 "user-role@test.com", "secret123", UserRole.USER, true);
-        adminToken = jwtUtils.generateToken(admin);
         organizerToken = jwtUtils.generateToken(organizer);
         userToken = jwtUtils.generateToken(user);
         category = categoryRepository.save(Category.builder().name("Test Cat").description("d").active(true).build());
-    }
-
-    @Test
-    void userNoPuedeAccederAMonitoringAdmin() throws Exception {
-        mockMvc.perform(get("/api/admin/monitoring").header("Authorization", bearer(userToken)))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void organizerNoPuedeAccederAAdmin() throws Exception {
-        mockMvc.perform(get("/api/admin/monitoring").header("Authorization", bearer(organizerToken)))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void adminPuedeAccederAMonitoring() throws Exception {
-        mockMvc.perform(get("/api/admin/monitoring").header("Authorization", bearer(adminToken)))
-                .andExpect(status().isOk());
     }
 
     @Test
@@ -98,19 +76,6 @@ class RoleAuthorizationTest {
     }
 
     @Test
-    void organizerNoPuedeCrearCategoriaYAdminSi() throws Exception {
-        mockMvc.perform(post("/api/categories").header("Authorization", bearer(organizerToken))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"Nueva Cat\",\"description\":\"desc\"}"))
-                .andExpect(status().isForbidden());
-
-        mockMvc.perform(post("/api/categories").header("Authorization", bearer(adminToken))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"Otra Cat\",\"description\":\"desc\"}"))
-                .andExpect(status().isCreated());
-    }
-
-    @Test
     void accesoADashboardOrganizerSegunRol() throws Exception {
         mockMvc.perform(get("/api/organizer/dashboard").header("Authorization", bearer(userToken)))
                 .andExpect(status().isForbidden());
@@ -120,7 +85,7 @@ class RoleAuthorizationTest {
 
     @Test
     void sinTokenAEndpointProtegidoDevuelve401() throws Exception {
-        mockMvc.perform(get("/api/admin/monitoring"))
+        mockMvc.perform(get("/api/organizer/dashboard"))
                 .andExpect(status().isUnauthorized());
     }
 

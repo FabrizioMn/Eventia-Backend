@@ -32,7 +32,6 @@ public final class TestUserFactory {
     private static String dniFor(UserRole role, boolean active) {
         String suffix = active ? "1" : "0";
         return switch (role) {
-            case ADMIN -> "9000000" + suffix;
             case ORGANIZER -> "9000001" + suffix;
             case USER -> "9000002" + suffix;
         };

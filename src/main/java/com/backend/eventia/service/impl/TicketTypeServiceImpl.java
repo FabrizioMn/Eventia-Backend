@@ -9,7 +9,6 @@ import com.backend.eventia.model.Event;
 import com.backend.eventia.model.TicketType;
 import com.backend.eventia.model.User;
 import com.backend.eventia.model.enums.EventStatus;
-import com.backend.eventia.model.enums.UserRole;
 import com.backend.eventia.repository.EventRepository;
 import com.backend.eventia.repository.OrderDetailRepository;
 import com.backend.eventia.repository.TicketTypeRepository;
@@ -204,10 +203,9 @@ public class TicketTypeServiceImpl implements TicketTypeService {
     }
 
     private void validateEventOwnership(Event event, User user) {
-        boolean isAdmin = user.getRole() == UserRole.ADMIN;
         boolean isOwner = event.getOrganizer().getId().equals(user.getId());
 
-        if (!isAdmin && !isOwner) {
+        if (!isOwner) {
             log.warn("[TicketType] Acceso denegado: usuario '{}' no es dueño del evento id={}", user.getEmail(), event.getId());
             throw new AccessDeniedException("No tienes permisos para gestionar tarifas de este evento");
         }
@@ -220,7 +218,7 @@ public class TicketTypeServiceImpl implements TicketTypeService {
         }
 
         return userRepository.findByEmail(auth.getName())
-                .map(u -> u.getRole() == UserRole.ADMIN || event.getOrganizer().getId().equals(u.getId()))
+                .map(u -> event.getOrganizer().getId().equals(u.getId()))
                 .orElse(false);
     }
 

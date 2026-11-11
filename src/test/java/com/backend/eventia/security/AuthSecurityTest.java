@@ -52,17 +52,17 @@ class AuthSecurityTest {
     @Test
     void loginCorrectoDevuelveTokenConClaims() throws Exception {
         User user = TestUserFactory.createUser(userRepository, passwordEncoder,
-                "admin@test.com", "secret123", UserRole.ADMIN, true);
+                "login@test.com", "secret123", UserRole.USER, true);
 
         MvcResult result = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(loginJson("admin@test.com", "secret123")))
+                        .content(loginJson("login@test.com", "secret123")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").isNotEmpty())
                 .andReturn();
 
         String token = JsonPath.read(result.getResponse().getContentAsString(), "$.token");
-        assertThat(jwtUtils.extractRole(token)).isEqualTo("ADMIN");
+        assertThat(jwtUtils.extractRole(token)).isEqualTo("USER");
         assertThat(jwtUtils.extractUserId(token)).isEqualTo(user.getId());
     }
 
