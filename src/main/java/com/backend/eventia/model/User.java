@@ -53,6 +53,9 @@ public class User {
     @Builder.Default
     private boolean active = true;
 
+    @Column(name = "deactivated_at")
+    private LocalDateTime deactivatedAt;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
