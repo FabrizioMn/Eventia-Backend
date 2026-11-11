@@ -1,0 +1,34 @@
+package com.backend.eventia.controller;
+
+import com.backend.eventia.dto.user.DeactivateAccountRequestDto;
+import com.backend.eventia.service.UserService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@Slf4j
+@RestController
+@RequestMapping("/api/users")
+@RequiredArgsConstructor
+public class UserController {
+
+    private final UserService userService;
+
+    @PatchMapping("/me/deactivate")
+    @PreAuthorize("hasAnyRole('USER', 'ORGANIZER')")
+    public ResponseEntity<Void> deactivateAccount(
+            Authentication authentication,
+            @Valid @RequestBody DeactivateAccountRequestDto request
+    ) {
+        log.info("[UserController] PATCH /api/users/me/deactivate - usuario='{}'", authentication.getName());
+        userService.deactivateAccount(authentication.getName(), request.password());
+        return ResponseEntity.noContent().build();
+    }
+}
