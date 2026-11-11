@@ -1,10 +1,12 @@
 package com.backend.eventia.service;
 
-import com.backend.eventia.dto.AuthResponseDto;
-import com.backend.eventia.dto.LoginRequestDto;
-import com.backend.eventia.dto.RegisterRequestDto;
+import com.backend.eventia.dto.auth.AuthResponseDto;
+import com.backend.eventia.dto.auth.AuthUserResponseDto;
+import com.backend.eventia.dto.auth.LoginRequestDto;
+import com.backend.eventia.dto.auth.RegisterRequestDto;
 
 public interface AuthService {
     AuthResponseDto login(LoginRequestDto request);
     AuthResponseDto register(RegisterRequestDto request);
+    AuthUserResponseDto getCurrentUser(String email);
 }
