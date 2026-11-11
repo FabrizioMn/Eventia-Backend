@@ -23,8 +23,9 @@ class AuthRulesTest {
 
     @Test
     void registroCumpleYRechazaEmailODniDuplicadoCon409() throws Exception {
-        String validBody = "{\"firstName\":\"Ana\",\"lastName\":\"Perez\",\"dni\":\"71234567\","
-                + "\"email\":\"ana.perez@test.com\",\"password\":\"secret123\"}";
+        String validBody = "{\"firstName\":\"Ana\",\"lastName\":\"Perez\",\"documentType\":\"DNI\","
+                + "\"dni\":\"71234567\",\"email\":\"ana.perez@test.com\",\"cellphone\":\"987654321\","
+                + "\"password\":\"secret123\",\"role\":\"CLIENTE\"}";
 
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -32,16 +33,18 @@ class AuthRulesTest {
                 .andExpect(status().isCreated());
 
         // Email duplicado -> 409
-        String duplicateEmail = "{\"firstName\":\"Otra\",\"lastName\":\"Perez\",\"dni\":\"79999999\","
-                + "\"email\":\"ana.perez@test.com\",\"password\":\"secret123\"}";
+        String duplicateEmail = "{\"firstName\":\"Otra\",\"lastName\":\"Perez\",\"documentType\":\"DNI\","
+                + "\"dni\":\"79999999\",\"email\":\"ana.perez@test.com\",\"cellphone\":\"987654322\","
+                + "\"password\":\"secret123\",\"role\":\"CLIENTE\"}";
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(duplicateEmail))
                 .andExpect(status().isConflict());
 
-        // DNI duplicado -> 409
-        String duplicateDni = "{\"firstName\":\"Otra\",\"lastName\":\"Perez\",\"dni\":\"71234567\","
-                + "\"email\":\"otra.perez@test.com\",\"password\":\"secret123\"}";
+        // Documento duplicado -> 409
+        String duplicateDni = "{\"firstName\":\"Otra\",\"lastName\":\"Perez\",\"documentType\":\"DNI\","
+                + "\"dni\":\"71234567\",\"email\":\"otra.perez@test.com\",\"cellphone\":\"987654323\","
+                + "\"password\":\"secret123\",\"role\":\"CLIENTE\"}";
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(duplicateDni))
