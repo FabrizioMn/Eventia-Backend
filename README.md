@@ -93,6 +93,8 @@ Los roles internos disponibles en el sistema son:
 
 El backend expone servicios REST para ser consumidos por el frontend de Eventia.
 
+Documentación interactiva (Swagger UI): `http://localhost:8080/swagger-ui.html`.
+
 ### Autenticación
 
 | **Endpoint** | **Método** | **Descripción** |

@@ -50,6 +50,7 @@ public class SecurityConfig {
                     // Endpoints públicos
                     http.requestMatchers("/auth/login", "/auth/register").permitAll();
                     http.requestMatchers("/error").permitAll();
+                    http.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll();
                     if (isDevProfileActive()) {
                         http.requestMatchers("/h2-console/**").permitAll();
                     }
