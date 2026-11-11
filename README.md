@@ -110,6 +110,13 @@ El backend expone servicios REST para ser consumidos por el frontend de Eventia.
 | `/api/events/{id}` | GET | Consultar detalle de un evento |
 | `/api/events/organizer` | GET | Consultar eventos del organizador |
 
+### Usuarios
+
+| **Endpoint** | **Método** | **Descripción** |
+| --- | --- | --- |
+| `/api/users` | GET | Listar clientes compradores de mis eventos (solo ORGANIZER) |
+| `/api/users/me/deactivate` | PATCH | Desactivar la cuenta propia (USER u ORGANIZER) |
+
 La API continúa ampliándose conforme se implementan las funcionalidades de la plataforma.
 
 ## 🔧 Variables de entorno
