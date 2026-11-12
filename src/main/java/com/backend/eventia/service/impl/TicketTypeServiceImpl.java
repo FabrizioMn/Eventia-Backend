@@ -2,7 +2,6 @@ package com.backend.eventia.service.impl;
 
 import com.backend.eventia.dto.tickettype.TicketTypeRequestDto;
 import com.backend.eventia.dto.tickettype.TicketTypeResponseDto;
-import com.backend.eventia.exception.ConflictException;
 import com.backend.eventia.exception.DuplicateResourceException;
 import com.backend.eventia.exception.ResourceNotFoundException;
 import com.backend.eventia.model.Event;
@@ -10,7 +9,6 @@ import com.backend.eventia.model.TicketType;
 import com.backend.eventia.model.User;
 import com.backend.eventia.model.enums.EventStatus;
 import com.backend.eventia.repository.EventRepository;
-import com.backend.eventia.repository.OrderDetailRepository;
 import com.backend.eventia.repository.TicketTypeRepository;
 import com.backend.eventia.repository.UserRepository;
 import com.backend.eventia.service.TicketTypeService;
@@ -32,7 +30,6 @@ public class TicketTypeServiceImpl implements TicketTypeService {
 
     private final TicketTypeRepository ticketTypeRepository;
     private final EventRepository eventRepository;
-    private final OrderDetailRepository orderDetailRepository;
     private final UserRepository userRepository;
 
     @Override
@@ -159,19 +156,15 @@ public class TicketTypeServiceImpl implements TicketTypeService {
     @Override
     @Transactional
     public void delete(Long id, String userEmail) {
-        log.info("[TicketType] Intentando eliminar tarifa id={} por usuario='{}'", id, userEmail);
+        log.info("[TicketType] Inactivando tarifa (baja lógica) id={} por usuario='{}'", id, userEmail);
 
         TicketType ticketType = getTicketTypeOrThrow(id);
         User user = getUserOrThrow(userEmail);
         validateEventOwnership(ticketType.getEvent(), user);
 
-        if (orderDetailRepository.existsByTicketTypeId(id)) {
-            log.warn("[TicketType] Eliminación rechazada: la tarifa id={} tiene ventas registradas", id);
-            throw new ConflictException("No se puede eliminar la tarifa porque ya cuenta con ventas registradas. En su lugar, desactívela.");
-        }
-
-        ticketTypeRepository.delete(ticketType);
-        log.info("[TicketType] Tarifa id={} eliminada exitosamente", id);
+        ticketType.setActive(false);
+        ticketTypeRepository.save(ticketType);
+        log.info("[TicketType] Tarifa id={} inactivada exitosamente", id);
     }
 
     // --------
