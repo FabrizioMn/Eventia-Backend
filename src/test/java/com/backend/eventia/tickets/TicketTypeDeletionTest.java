@@ -29,6 +29,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -66,7 +68,7 @@ class TicketTypeDeletionTest {
     private JwtUtils jwtUtils;
 
     @Test
-    void borrarTarifaConVentasDevuelve409() throws Exception {
+    void eliminarTarifaRealizaBajaLogicaInactivandoRegistro() throws Exception {
         User organizer = TestUserFactory.createUser(userRepository, passwordEncoder,
                 "org-ticket@test.com", "secret123", UserRole.ORGANIZER, true);
         User buyer = TestUserFactory.createUser(userRepository, passwordEncoder,
@@ -113,6 +115,9 @@ class TicketTypeDeletionTest {
         String token = jwtUtils.generateToken(organizer);
         mockMvc.perform(delete("/api/ticket-types/{id}", ticketType.getId())
                         .header("Authorization", "Bearer " + token))
-                .andExpect(status().isConflict());
+                .andExpect(status().isNoContent());
+
+        assertTrue(ticketTypeRepository.findById(ticketType.getId()).isPresent());
+        assertFalse(ticketTypeRepository.findById(ticketType.getId()).orElseThrow().isActive());
     }
 }
