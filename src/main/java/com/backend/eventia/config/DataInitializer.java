@@ -101,7 +101,7 @@ public class DataInitializer {
         Category tecnologia = getOrCreateCategory("Tecnología & Startups", "Conferencias, hackathons, foros tecnológicos y networking.");
 
         saveEvent("Illapu: 50 Años de Memoria", "Concierto por los 50 años de Illapu",
-                LocalDate.of(2026, 11, 22), "Estadio Nacional, Lima", 45000, conciertos, organizer, 120.0);
+                LocalDate.of(2026, 12, 5), "Estadio Nacional, Lima", 45000, conciertos, organizer, 120.0);
         saveEvent("Sunsets Sessions Costa Verde", "Festival al atardecer frente al mar",
                 LocalDate.of(2026, 12, 6), "Arena 1, San Miguel", 12000, festivales, organizer, 85.0);
         saveEvent("La Ciudad y los Perros (Adaptación)", "Adaptación teatral de la novela",
@@ -110,7 +110,7 @@ public class DataInitializer {
                 LocalDate.of(2026, 12, 14), "Jockey Club del Perú", 5000, gastronomia, organizer, 45.0);
         saveEvent("Trap & Latin Flow Live Tour", "Gira de trap y latin flow",
                 LocalDate.of(2027, 1, 18), "Arena 1, Costa Verde", 15000, conciertos, organizer, 140.0);
-        saveEvent("Peru Tech Summit & Fintech 2025", "Cumbre de tecnología y fintech",
+        saveEvent("Peru Tech Summit & Fintech 2027", "Cumbre de tecnología y fintech",
                 LocalDate.of(2027, 1, 25), "Centro de Convenciones 27 de Enero", 3000, tecnologia, organizer, 210.0);
 
         log.info("[DataInitializer] Eventos de ejemplo creados correctamente");

@@ -1,0 +1,12 @@
+# Configuración exclusiva para desarrollo local.
+# En producción se activa el perfil prod (ver Dockerfile) y JWT_SECRET es obligatorio.
+spring:
+  h2:
+    console:
+      enabled: true
+      settings:
+        web-allow-others: false
+
+security:
+  jwt:
+    key-private: ${JWT_SECRET:ZGV2LW9ubHktand0LXNlY3JldC1ub3QtZm9yLXByb2R1Y3Rpb24tMDAwMS0wMDAx}

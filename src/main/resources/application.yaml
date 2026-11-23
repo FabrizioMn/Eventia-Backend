@@ -20,14 +20,18 @@ spring:
       ddl-auto: update
   h2:
     console:
-      enabled: true
+      enabled: false
       path: /h2-console
 
 
+app:
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,https://eventia-frontend-eight.vercel.app}
+
 security:
   jwt:
-    # Valor por defecto solo para desarrollo. En producción define JWT_SECRET.
-    key-private: ${JWT_SECRET:964ffdb5e95797ad2be8a036924d97a1df90a004b69e25093959be7d5104601b}
+    # Obligatorio definir JWT_SECRET. El perfil dev aporta un valor solo local.
+    key-private: ${JWT_SECRET}
     expiration: ${JWT_EXPIRATION_MS:86400000}
 
 logging:
@@ -36,7 +40,7 @@ logging:
   level:
     com:
       backend:
-        eventia: DEBUG
+        eventia: INFO
     # Para la demostración, subir temporalmente a DEBUG:
     # logging.level.org.springframework.security: DEBUG
     org:

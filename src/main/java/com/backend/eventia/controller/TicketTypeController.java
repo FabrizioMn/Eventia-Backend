@@ -32,6 +32,12 @@ public class TicketTypeController {
         return ResponseEntity.ok(tickets);
     }
 
+    @GetMapping("/api/ticket-types/{id}")
+    public ResponseEntity<TicketTypeResponseDto> findById(@PathVariable Long id) {
+        log.debug("[TicketTypeController] GET /api/ticket-types/{} - Consultando tarifa", id);
+        return ResponseEntity.ok(ticketTypeService.findById(id));
+    }
+
     @PostMapping("/api/events/{eventId}/ticket-types")
     @PreAuthorize("hasAnyRole('ORGANIZER', 'ADMIN')")
     public ResponseEntity<TicketTypeResponseDto> create(

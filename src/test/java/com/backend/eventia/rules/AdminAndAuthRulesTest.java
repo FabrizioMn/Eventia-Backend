@@ -64,7 +64,7 @@ class AdminAndAuthRulesTest {
     @Test
     void registroCumpleYRechazaEmailODniDuplicadoCon409() throws Exception {
         String validBody = "{\"firstName\":\"Ana\",\"lastName\":\"Perez\",\"dni\":\"71234567\","
-                + "\"email\":\"ana.perez@test.com\",\"password\":\"secret123\"}";
+                + "\"email\":\"ana.perez@test.com\",\"password\":\"Secret123\"}";
 
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -73,7 +73,7 @@ class AdminAndAuthRulesTest {
 
         // Email duplicado -> 409
         String duplicateEmail = "{\"firstName\":\"Otra\",\"lastName\":\"Perez\",\"dni\":\"79999999\","
-                + "\"email\":\"ana.perez@test.com\",\"password\":\"secret123\"}";
+                + "\"email\":\"ana.perez@test.com\",\"password\":\"Secret123\"}";
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(duplicateEmail))
@@ -81,7 +81,7 @@ class AdminAndAuthRulesTest {
 
         // DNI duplicado -> 409
         String duplicateDni = "{\"firstName\":\"Otra\",\"lastName\":\"Perez\",\"dni\":\"71234567\","
-                + "\"email\":\"otra.perez@test.com\",\"password\":\"secret123\"}";
+                + "\"email\":\"otra.perez@test.com\",\"password\":\"Secret123\"}";
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(duplicateDni))
@@ -91,7 +91,7 @@ class AdminAndAuthRulesTest {
     @Test
     void adminOrganizadorCumpleYRechazaEmailODniDuplicadoEnCreacionYEdicion() throws Exception {
         String org1 = "{\"firstName\":\"Carlos\",\"lastName\":\"Rojas\",\"dni\":\"72111222\","
-                + "\"email\":\"carlos@org.pe\",\"cellphone\":\"987654321\",\"password\":\"secret123\"}";
+                + "\"email\":\"carlos@org.pe\",\"cellphone\":\"987654321\",\"password\":\"Secret123\"}";
 
         mockMvc.perform(post("/api/admin/users")
                         .header("Authorization", "Bearer " + adminToken)
@@ -101,7 +101,7 @@ class AdminAndAuthRulesTest {
 
         // Crear con email duplicado -> 409
         String dupEmail = "{\"firstName\":\"Luis\",\"lastName\":\"Diaz\",\"dni\":\"72333444\","
-                + "\"email\":\"CARLOS@org.pe\",\"cellphone\":\"987654322\",\"password\":\"secret123\"}";
+                + "\"email\":\"CARLOS@org.pe\",\"cellphone\":\"987654322\",\"password\":\"Secret123\"}";
         mockMvc.perform(post("/api/admin/users")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -110,7 +110,7 @@ class AdminAndAuthRulesTest {
 
         // Crear con DNI duplicado -> 409
         String dupDni = "{\"firstName\":\"Luis\",\"lastName\":\"Diaz\",\"dni\":\"72111222\","
-                + "\"email\":\"luis@org.pe\",\"cellphone\":\"987654322\",\"password\":\"secret123\"}";
+                + "\"email\":\"luis@org.pe\",\"cellphone\":\"987654322\",\"password\":\"Secret123\"}";
         mockMvc.perform(post("/api/admin/users")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)

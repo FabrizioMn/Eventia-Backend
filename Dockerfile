@@ -1,5 +1,5 @@
-# 1era etapa: Contruccion
-FROM eclipse-temurin:21-jdk-alpine as build
+# 1era etapa: Construcción
+FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /app
 
 
@@ -10,7 +10,7 @@ COPY pom.xml .
 
 # Damos permisos de ejecución al wrapper y descargamos dependencias
 COPY src src
-RUN ./mvnw clean package -DskipTests
+RUN chmod +x mvnw && ./mvnw clean package -DskipTests
 
 
 # Etapa 2: Imagen de Producción
@@ -19,6 +19,12 @@ WORKDIR /app
 
 # Copiamos el .jar generado
 COPY --from=build /app/target/Eventia-0.0.1-SNAPSHOT.jar app.jar
+
+# Nunca usar el perfil dev (H2, datos semilla y consola) en una imagen desplegada.
+ENV SPRING_PROFILES_ACTIVE=prod
+
+RUN addgroup -S eventia && adduser -S eventia -G eventia
+USER eventia
 
 EXPOSE 8080
 

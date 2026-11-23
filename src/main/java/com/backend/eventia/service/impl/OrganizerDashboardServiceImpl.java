@@ -129,19 +129,6 @@ public class OrganizerDashboardServiceImpl implements OrganizerDashboardService 
         Integer dbSold = orderDetailRepository.sumTicketsSoldByOrganizerId(organizerId);
         long ticketsSold = dbSold != null && dbSold > 0 ? dbSold.longValue() : 0L;
 
-        // Si aún no hay órdenes registradas pero los tickets tienen ventas reflejadas en su aforo
-        if (ticketsSold == 0 && !activeTickets.isEmpty()) {
-            for (TicketType t : activeTickets) {
-                if (t.getTotalCapacity() != null && t.getAvailableCapacity() != null) {
-                    long sold = t.getTotalCapacity() - t.getAvailableCapacity();
-                    if (sold > 0) {
-                        ticketsSold += sold;
-                        totalRevenue += (sold * t.getPrice());
-                    }
-                }
-            }
-        }
-
         long totalCapacity = activeEvents.stream()
                 .mapToLong(e -> e.getCapacity() != null ? e.getCapacity() : 0)
                 .sum();
