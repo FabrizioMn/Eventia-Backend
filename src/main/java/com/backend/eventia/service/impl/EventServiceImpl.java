@@ -77,7 +77,9 @@ public class EventServiceImpl implements EventService {
         log.debug("[Event] Buscando evento id={}", id);
         Event event = getEventOrThrow(id);
 
-        if ((!event.isActive() || event.getStatus() != EventStatus.PUBLISHED) && !isAuthorizedToViewUnpublished(event)) {
+        boolean organizerActive = event.getOrganizer() != null && event.getOrganizer().isActive();
+        if ((!event.isActive() || event.getStatus() != EventStatus.PUBLISHED || !organizerActive)
+                && !isAuthorizedToViewUnpublished(event)) {
             log.warn("[Event] Intento no autorizado de consultar evento no publicado o inactivo id={}", id);
             throw new ResourceNotFoundException("No se encontró el evento con el id: " + id);
         }

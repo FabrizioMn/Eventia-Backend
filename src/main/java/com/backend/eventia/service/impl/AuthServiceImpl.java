@@ -4,7 +4,9 @@ import com.backend.eventia.dto.auth.AuthResponseDto;
 import com.backend.eventia.dto.auth.AuthUserResponseDto;
 import com.backend.eventia.dto.auth.AuthUserSummaryDto;
 import com.backend.eventia.dto.auth.LoginRequestDto;
+import com.backend.eventia.dto.auth.ProfileUpdateResponseDto;
 import com.backend.eventia.dto.auth.RegisterRequestDto;
+import com.backend.eventia.dto.auth.UpdateProfileRequestDto;
 import com.backend.eventia.exception.DuplicateResourceException;
 import com.backend.eventia.exception.ResourceNotFoundException;
 import com.backend.eventia.model.User;
@@ -47,10 +49,10 @@ public class AuthServiceImpl implements AuthService {
 
         String token = jwtUtils.generateToken(user);
 
-        // Solo con fines académicos: se registra el token completo para la sustentación.
-        log.info("[JWT] Token generado para {} | role={} | userId={} | expira={} | token={}",
+        // Nunca registrar el token: equivale a publicar una sesión válida.
+        log.info("[JWT] Token generado para {} | role={} | userId={} | expira={}",
                 email, user.getRole().name(), user.getId(),
-                java.time.Instant.now().plusSeconds(jwtUtils.getExpirationInSeconds()), token);
+                java.time.Instant.now().plusSeconds(jwtUtils.getExpirationInSeconds()));
         log.info("[Auth] LOGIN exitoso para: {}", email);
         return buildAuthResponse(token, user);
     }
@@ -120,5 +122,44 @@ public class AuthServiceImpl implements AuthService {
                 user.getEmail(),
                 user.getRole().name()
         );
+    }
+
+    @Override
+    @Transactional
+    public ProfileUpdateResponseDto updateProfile(String email, UpdateProfileRequestDto request) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "No se encontro el usuario autenticado con el correo: " + email));
+
+        if (request.newPassword() != null && !request.newPassword().isBlank()) {
+            if (request.currentPassword() == null || !passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+                throw new IllegalArgumentException("La contraseña actual es incorrecta");
+            }
+            if (request.newPassword().length() < 6) {
+                throw new IllegalArgumentException("La nueva contraseña debe tener al menos 6 caracteres");
+            }
+            user.setPassword(passwordEncoder.encode(request.newPassword()));
+        }
+
+        if (request.email() != null && !request.email().isBlank()) {
+            String newEmail = request.email().trim().toLowerCase();
+            if (!newEmail.equals(user.getEmail()) && userRepository.existsByEmail(newEmail)) {
+                throw new DuplicateResourceException("El email ya esta registrado");
+            }
+            user.setEmail(newEmail);
+        }
+        if (request.firstName() != null && !request.firstName().isBlank()) {
+            user.setFirstName(request.firstName().trim());
+        }
+        if (request.lastName() != null && !request.lastName().isBlank()) {
+            user.setLastName(request.lastName().trim());
+        }
+        if (request.cellphone() != null && !request.cellphone().isBlank()) {
+            user.setCellphone(request.cellphone().trim());
+        }
+
+        userRepository.save(user);
+        log.info("[Auth] Perfil actualizado para: {}", user.getEmail());
+        return new ProfileUpdateResponseDto(jwtUtils.generateToken(user), getCurrentUser(user.getEmail()));
     }
 }

@@ -5,6 +5,7 @@ import com.backend.eventia.dto.organizer.OrganizerLiveSaleNotificationDto;
 import com.backend.eventia.service.OrganizerDashboardService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -14,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/organizer/dashboard")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ORGANIZER')")
+@PreAuthorize("hasAnyRole('ORGANIZER', 'ADMIN')")
 public class OrganizerDashboardController {
 
     private final OrganizerDashboardService organizerDashboardService;
@@ -28,6 +29,8 @@ public class OrganizerDashboardController {
         return ResponseEntity.ok(data);
     }
 
+    // Solo disponible en desarrollo: permite probar el dashboard en vivo sin inventar ventas en producción.
+    @Profile("dev")
     @PostMapping("/simulate-sale")
     public ResponseEntity<OrganizerLiveSaleNotificationDto> simulateSale(
             @RequestParam(required = false, defaultValue = "Lima Live Sessions") String eventTitle,

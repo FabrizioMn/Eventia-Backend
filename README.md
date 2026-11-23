@@ -56,7 +56,7 @@ src/
     │       ├── controller/       # Endpoints REST
     │       ├── service/          # Lógica de negocio
     │       ├── repository/       # Acceso a datos
-    │       ├── entity/           # Entidades de persistencia
+    │       ├── model/            # Entidades de persistencia
     │       ├── dto/              # Objetos de transferencia de datos
     │       ├── security/         # Configuración de seguridad y JWT
     │       └── config/            # Configuración de la aplicación

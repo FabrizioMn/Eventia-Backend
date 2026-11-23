@@ -50,6 +50,8 @@ public class SecurityConfig {
                     // Endpoints públicos
                     http.requestMatchers("/auth/login", "/auth/register").permitAll();
                     http.requestMatchers("/error").permitAll();
+                    // El handshake es público; la autenticación real ocurre en el frame STOMP CONNECT.
+                    http.requestMatchers("/ws-eventia/**").permitAll();
                     if (isDevProfileActive()) {
                         http.requestMatchers("/h2-console/**").permitAll();
                     }
@@ -76,6 +78,7 @@ public class SecurityConfig {
                     // Ticket types: lectura pública para eventos publicados, escritura solo ADMIN/ORGANIZER
                     http.requestMatchers(HttpMethod.POST, "/api/events/*/ticket-types")
                             .hasAnyRole("ADMIN", "ORGANIZER");
+                    http.requestMatchers(HttpMethod.GET, "/api/ticket-types/*").permitAll();
                     http.requestMatchers(HttpMethod.PUT, "/api/ticket-types/*")
                             .hasAnyRole("ADMIN", "ORGANIZER");
                     http.requestMatchers(HttpMethod.PATCH, "/api/ticket-types/*/status")

@@ -3,7 +3,9 @@ package com.backend.eventia.controller;
 import com.backend.eventia.dto.auth.AuthResponseDto;
 import com.backend.eventia.dto.auth.AuthUserResponseDto;
 import com.backend.eventia.dto.auth.LoginRequestDto;
+import com.backend.eventia.dto.auth.ProfileUpdateResponseDto;
 import com.backend.eventia.dto.auth.RegisterRequestDto;
+import com.backend.eventia.dto.auth.UpdateProfileRequestDto;
 import com.backend.eventia.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -15,6 +17,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -71,6 +74,14 @@ public class AuthController {
         String email = authentication.getName();
         log.info("[AuthController] GET /auth/me - usuario autenticado identificado mediante Authentication: {}", email);
         return ResponseEntity.ok(authService.getCurrentUser(email));
+    }
+
+    @PatchMapping("/me")
+    public ResponseEntity<ProfileUpdateResponseDto> updateProfile(
+            @Valid @RequestBody UpdateProfileRequestDto request,
+            Authentication authentication) {
+        log.info("[AuthController] PATCH /auth/me - usuario autenticado: {}", authentication.getName());
+        return ResponseEntity.ok(authService.updateProfile(authentication.getName(), request));
     }
 
 }

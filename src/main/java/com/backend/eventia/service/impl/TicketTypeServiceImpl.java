@@ -63,6 +63,27 @@ public class TicketTypeServiceImpl implements TicketTypeService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public TicketTypeResponseDto findById(Long id) {
+        TicketType ticketType = getTicketTypeOrThrow(id);
+        Event event = ticketType.getEvent();
+        if (event == null) {
+            throw new ResourceNotFoundException("No se encontró la tarifa con el id: " + id);
+        }
+
+        // Las tarifas inactivas o de eventos no publicados solo son visibles para el dueño o un ADMIN.
+        boolean privileged = isAuthorizedToViewInactive(event);
+        if (!ticketType.isActive() && !privileged) {
+            throw new AccessDeniedException("No tienes permisos para ver esta tarifa");
+        }
+        if ((!event.isActive() || event.getStatus() != EventStatus.PUBLISHED) && !privileged) {
+            throw new ResourceNotFoundException("No se encontró la tarifa con el id: " + id);
+        }
+
+        return toDto(ticketType);
+    }
+
+    @Override
     @Transactional
     public TicketTypeResponseDto create(Long eventId, TicketTypeRequestDto request, String userEmail) {
         String name = request.name().trim();

@@ -2,6 +2,7 @@ package com.backend.eventia.dto.admin;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record AdminCreateUserRequestDto(
@@ -26,6 +27,8 @@ public record AdminCreateUserRequestDto(
 
         @NotBlank(message = "La contraseña provisional es obligatoria")
         @Size(min = 8, max = 100, message = "La contraseña debe tener al menos 8 caracteres")
+        @Pattern(regexp = "^(?=.*[A-Z])(?=.*\\d).{8,100}$",
+                message = "La contraseña debe incluir al menos una mayúscula y un número")
         String password
 ) {
 }

@@ -57,8 +57,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     );
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
-                    // Solo con fines académicos: se registra el header/token y claims para la sustentación.
-                    log.info("[JWT] Authorization recibido | header={} | {} {}", authHeader, request.getMethod(), request.getRequestURI());
                     log.info("[JWT] Token validado | sub={} | claim role={} | authorities(BD)={} | {} {}",
                             userEmail, jwtUtils.extractRole(token), userDetails.getAuthorities(),
                             request.getMethod(), request.getRequestURI());
