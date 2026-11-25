@@ -379,6 +379,7 @@ public class EventServiceImpl implements EventService {
                 event.getEndTime(),
                 event.getLocation(),
                 event.getCapacity(),
+                ticketTypeRepository.findMinPriceByEventId(event.getId()),
                 event.getBannerUrl(),
                 event.getCategory() != null ? event.getCategory().getName() : null,
                 event.getStatus(),
