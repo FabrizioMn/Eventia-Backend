@@ -15,7 +15,6 @@ public record TicketTypeResponseDto(
         Integer soldCount,
         String status,
         Integer maxPerPurchase,
-        boolean isPresale,
         LocalDate saleStartDate,
         LocalDate saleEndDate,
         LocalDateTime createdAt,
