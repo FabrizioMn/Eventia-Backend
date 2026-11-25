@@ -85,17 +85,17 @@ class TicketTypeLimitTest {
     }
 
     @Test
-    void crearTarifaSinLimiteUsaDiezPorDefecto() throws Exception {
+    void crearTarifaUsaLimiteFijoDeCinco() throws Exception {
         mockMvc.perform(post("/api/events/{eventId}/ticket-types", event.getId())
                         .header("Authorization", "Bearer " + organizerToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"General\",\"zone\":\"General\",\"price\":50.0,\"totalCapacity\":60}"))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.maxPerPurchase").value(10));
+                .andExpect(jsonPath("$.maxPerPurchase").value(5));
     }
 
     @Test
-    void actualizarTarifaLegacySinLimiteUsaDiezPorDefecto() throws Exception {
+    void actualizarTarifaUsaLimiteFijoDeCinco() throws Exception {
         TicketType legacy = ticketTypeRepository.save(TicketType.builder()
                 .name("Legacy")
                 .zone("General")
@@ -113,6 +113,6 @@ class TicketTypeLimitTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"Legacy\",\"zone\":\"General\",\"price\":20.0,\"totalCapacity\":10}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.maxPerPurchase").value(10));
+                .andExpect(jsonPath("$.maxPerPurchase").value(5));
     }
 }
