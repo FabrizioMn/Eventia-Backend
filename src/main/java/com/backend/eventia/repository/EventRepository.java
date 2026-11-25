@@ -34,5 +34,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     Page<Event> findByActiveTrueAndStatus(EventStatus status, Pageable pageable);
 
+    Page<Event> findByStatus(EventStatus status, Pageable pageable);
+
     boolean existsByTitleIgnoreCaseAndOrganizerId(String title, Long organizerId);
 }
