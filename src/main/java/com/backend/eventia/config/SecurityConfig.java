@@ -1,12 +1,10 @@
 package com.backend.eventia.config;
 
-import com.backend.eventia.security.JwtAccessDeniedHandler;
-import com.backend.eventia.security.JwtAuthenticationEntryPoint;
+import com.backend.eventia.security.handler.JwtAccessDeniedHandler;
+import com.backend.eventia.security.handler.JwtAuthenticationEntryPoint;
 import com.backend.eventia.security.JwtAuthenticationFilter;
-import com.backend.eventia.security.RequestLoggingFilter;
 import com.backend.eventia.service.impl.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
@@ -34,7 +32,6 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final RequestLoggingFilter requestLoggingFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
     private final Environment environment;
@@ -100,7 +97,6 @@ public class SecurityConfig {
                 })
                 .headers(h -> h.frameOptions(f -> f.sameOrigin()))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(requestLoggingFilter, JwtAuthenticationFilter.class)
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint)
                         .accessDeniedHandler(jwtAccessDeniedHandler))
@@ -115,20 +111,10 @@ public class SecurityConfig {
                 || Arrays.asList(environment.getDefaultProfiles()).contains("dev")));
     }
 
-
-    @Bean
-    public FilterRegistrationBean<RequestLoggingFilter> requestLoggingFilterRegistration(RequestLoggingFilter filter) {
-        // Se ejecuta dentro de la cadena de seguridad, no como filtro adicional del contenedor.
-        FilterRegistrationBean<RequestLoggingFilter> registration = new FilterRegistrationBean<>(filter);
-        registration.setEnabled(false);
-        return registration;
-    }
-
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
     }
-
 
     @Bean
     public AuthenticationProvider authenticationProvider(UserDetailsServiceImpl userDetailsService) {
@@ -136,7 +122,6 @@ public class SecurityConfig {
         daoAuthenticationProvider.setPasswordEncoder(passwordEncoder());
         return daoAuthenticationProvider;
     }
-
 
     @Bean
     public PasswordEncoder passwordEncoder() {
