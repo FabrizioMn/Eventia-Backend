@@ -33,7 +33,7 @@ public class TicketServiceImpl implements TicketService {
     private final OrderRepository orderRepository;
     private final TicketRepository ticketRepository;
 
-    private static final int MAX_TICKETS_PER_ORDER = 10;
+    private static final int MAX_TICKETS_PER_ORDER = 5;
     private static final double PROMO_DISCOUNT_PCT = 15.0;
 
 
@@ -192,9 +192,7 @@ public class TicketServiceImpl implements TicketService {
                     "La venta de la tarifa '" + ticketType.getName() + "' ha finalizado");
         }
 
-        int maxPerPurchase = ticketType.getMaxPerPurchase() != null
-                ? ticketType.getMaxPerPurchase()
-                : TicketType.DEFAULT_MAX_PER_PURCHASE;
+        int maxPerPurchase = TicketType.MAX_PER_PURCHASE;
         if (quantity > maxPerPurchase) {
             throw new IllegalArgumentException(
                     "Solo se pueden comprar hasta " + maxPerPurchase +
