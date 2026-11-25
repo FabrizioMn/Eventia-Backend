@@ -119,7 +119,6 @@ class TicketTypeActivationTest {
                 .price(50.0)
                 .totalCapacity(capacity)
                 .availableCapacity(capacity)
-                .isPresale(false)
                 .active(active)
                 .event(event)
                 .build());
