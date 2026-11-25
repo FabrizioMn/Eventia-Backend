@@ -21,6 +21,9 @@ public interface TicketTypeRepository extends JpaRepository<TicketType, Long> {
     @Query("SELECT t FROM TicketType t WHERE t.event.organizer.id = :organizerId AND t.active = true")
     List<TicketType> findByOrganizerIdAndActiveTrue(@Param("organizerId") Long organizerId);
 
+    @Query("SELECT MIN(t.price) FROM TicketType t WHERE t.event.id = :eventId")
+    Double findMinPriceByEventId(@Param("eventId") Long eventId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT t FROM TicketType t WHERE t.id = :id")
     Optional<TicketType> findByIdForUpdate(@Param("id") Long id);
