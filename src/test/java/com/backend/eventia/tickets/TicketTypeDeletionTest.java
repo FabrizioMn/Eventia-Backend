@@ -91,8 +91,6 @@ class TicketTypeDeletionTest {
                 .price(50.0)
                 .totalCapacity(100)
                 .availableCapacity(99)
-                .maxPerPurchase(6)
-                .isPresale(false)
                 .active(true)
                 .event(event)
                 .build());
