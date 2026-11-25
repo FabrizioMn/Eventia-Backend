@@ -103,10 +103,7 @@ public class TicketTypeServiceImpl implements TicketTypeService {
                 .price(request.price())
                 .totalCapacity(request.totalCapacity())
                 .availableCapacity(request.totalCapacity())
-                .maxPerPurchase(request.maxPerPurchase() != null
-                        ? request.maxPerPurchase()
-                        : TicketType.DEFAULT_MAX_PER_PURCHASE)
-                .isPresale(request.isPresale() != null && request.isPresale())
+                .maxPerPurchase(TicketType.MAX_PER_PURCHASE)
                 .saleStartDate(request.saleStartDate())
                 .saleEndDate(request.saleEndDate())
                 .active(true)
@@ -142,14 +139,7 @@ public class TicketTypeServiceImpl implements TicketTypeService {
         if (request.zone() != null) {
             ticketType.setZone(request.zone().trim());
         }
-        if (request.maxPerPurchase() != null) {
-            ticketType.setMaxPerPurchase(request.maxPerPurchase());
-        } else if (ticketType.getMaxPerPurchase() == null) {
-            ticketType.setMaxPerPurchase(TicketType.DEFAULT_MAX_PER_PURCHASE);
-        }
-        if (request.isPresale() != null) {
-            ticketType.setPresale(request.isPresale());
-        }
+        ticketType.setMaxPerPurchase(TicketType.MAX_PER_PURCHASE);
         ticketType.setSaleStartDate(request.saleStartDate());
         ticketType.setSaleEndDate(request.saleEndDate());
 
@@ -356,7 +346,6 @@ public class TicketTypeServiceImpl implements TicketTypeService {
                 soldCount,
                 computeStatus(t),
                 t.getMaxPerPurchase(),
-                t.isPresale(),
                 t.getSaleStartDate(),
                 t.getSaleEndDate(),
                 t.getCreatedAt(),
