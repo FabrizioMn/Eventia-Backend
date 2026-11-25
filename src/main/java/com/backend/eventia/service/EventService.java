@@ -12,6 +12,8 @@ public interface EventService {
 
     Page<EventSummaryResponseDto> findAll(boolean includeInactive, Pageable pageable);
 
+    Page<EventSummaryResponseDto> findAllForAdmin(EventStatus status, Pageable pageable);
+
     EventDetailResponseDto findById(Long id);
 
     Page<EventSummaryResponseDto> findByOrganizer(String organizerEmail, boolean includeInactive, Pageable pageable);
