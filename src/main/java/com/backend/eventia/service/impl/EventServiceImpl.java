@@ -1,6 +1,7 @@
 package com.backend.eventia.service.impl;
 
 import com.backend.eventia.dto.event.EventDetailResponseDto;
+import com.backend.eventia.dto.event.EventNotificationDto;
 import com.backend.eventia.dto.event.EventRequestDto;
 import com.backend.eventia.dto.event.EventSummaryResponseDto;
 import com.backend.eventia.exception.DuplicateResourceException;
@@ -19,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -37,6 +39,7 @@ public class EventServiceImpl implements EventService {
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
     private final TicketTypeRepository ticketTypeRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Override
     @Transactional(readOnly = true)
@@ -51,6 +54,19 @@ public class EventServiceImpl implements EventService {
 
         log.debug("[Event] findAll -> {} eventos encontrados en página {} (includeInactive={})",
                 events.getNumberOfElements(), pageable.getPageNumber(), includeInactive);
+        return events.map(this::toSummaryDto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<EventSummaryResponseDto> findAllForAdmin(EventStatus status, Pageable pageable) {
+        log.debug("[Event] findAllForAdmin(status={}, page={}, size={})",
+                status, pageable.getPageNumber(), pageable.getPageSize());
+
+        Page<Event> events = (status != null)
+                ? eventRepository.findByStatus(status, pageable)
+                : eventRepository.findAll(pageable);
+
         return events.map(this::toSummaryDto);
     }
 
@@ -119,6 +135,20 @@ public class EventServiceImpl implements EventService {
         eventRepository.save(event);
         log.info("[Event] Evento creado exitosamente id={} título='{}'", event.getId(), event.getTitle());
 
+        EventSummaryResponseDto summary = toSummaryDto(event);
+        EventNotificationDto notification = new EventNotificationDto(
+                event.getId(),
+                event.getTitle(),
+                organizer.getFirstName() + " " + organizer.getLastName(),
+                category.getName(),
+                event.getStatus(),
+                "Nueva solicitud de evento: '" + event.getTitle() + "' por " + organizer.getFirstName() + " " + organizer.getLastName(),
+                java.time.LocalDateTime.now(),
+                summary
+        );
+        log.info("[Event] Emitiendo notificación WebSocket STOMP a /topic/admin/requests para evento id={}", event.getId());
+        messagingTemplate.convertAndSend("/topic/admin/requests", notification);
+
         return toDetailDto(event);
     }
 
@@ -180,6 +210,24 @@ public class EventServiceImpl implements EventService {
         eventRepository.save(event);
 
         log.info("[Event] Estado de evento actualizado id={} status={}", event.getId(), event.getStatus());
+
+        EventSummaryResponseDto summary = toSummaryDto(event);
+        String action = (status == EventStatus.PUBLISHED) ? "aprobado y publicado" : "actualizado a " + status;
+        String organizerName = event.getOrganizer() != null ? (event.getOrganizer().getFirstName() + " " + event.getOrganizer().getLastName()) : "Organizador";
+        String categoryName = event.getCategory() != null ? event.getCategory().getName() : null;
+
+        EventNotificationDto notification = new EventNotificationDto(
+                event.getId(),
+                event.getTitle(),
+                organizerName,
+                categoryName,
+                event.getStatus(),
+                "El evento '" + event.getTitle() + "' ha sido " + action,
+                java.time.LocalDateTime.now(),
+                summary
+        );
+        log.info("[Event] Emitiendo notificación WebSocket STOMP a /topic/events/updates para evento id={}", event.getId());
+        messagingTemplate.convertAndSend("/topic/events/updates", notification);
     }
 
     @Override
@@ -261,18 +309,20 @@ public class EventServiceImpl implements EventService {
     }
 
     private void validateStatusChangePermission(User user, EventStatus status) {
-        /*
         if (user.getRole() == UserRole.ORGANIZER && status == EventStatus.PUBLISHED) {
             log.warn("[Event] Organizador id={} intentó publicar un evento sin permisos de administrador", user.getId());
-            throw new AccessDeniedException("Solo un administrador puede publicar eventos");
+            throw new AccessDeniedException("Solo un administrador puede aprobar y publicar eventos");
         }
-        */
     }
 
     private void validatePublishable(Event event) {
         if (event.getDate().isBefore(LocalDate.now())) {
             log.warn("[Event] No se puede publicar el evento id={} con fecha pasada: date={}", event.getId(), event.getDate());
             throw new IllegalArgumentException("No se puede publicar un evento cuya fecha ya pasó");
+        }
+        if (ticketTypeRepository.findByEventId(event.getId()).isEmpty()) {
+            log.warn("[Event] No se puede publicar el evento id={} sin tarifas de entradas configuradas", event.getId());
+            throw new IllegalArgumentException("No se puede publicar un evento sin tarifas de entradas configuradas");
         }
     }
 
