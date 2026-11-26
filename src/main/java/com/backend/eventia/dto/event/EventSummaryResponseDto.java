@@ -14,6 +14,7 @@ public record EventSummaryResponseDto(
         LocalTime endTime,
         String location,
         Integer capacity,
+        Double minPrice,
         String bannerUrl,
         String categoryName,
         EventStatus status,

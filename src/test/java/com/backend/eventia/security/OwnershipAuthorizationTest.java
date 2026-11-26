@@ -94,8 +94,6 @@ class OwnershipAuthorizationTest {
                 .price(10.0)
                 .totalCapacity(50)
                 .availableCapacity(50)
-                .maxPerPurchase(6)
-                .isPresale(false)
                 .active(true)
                 .event(eventB)
                 .build());

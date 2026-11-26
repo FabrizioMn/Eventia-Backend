@@ -1,4 +1,4 @@
-package com.backend.eventia.security;
+package com.backend.eventia.security.handler;
 
 import com.backend.eventia.exception.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -7,9 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
@@ -29,12 +27,8 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
                          HttpServletResponse response,
                          AuthenticationException authException) throws IOException {
 
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        log.warn("[HTTP 401] {} | usuario={} | roles={} | motivo={}",
-                SecurityLogUtils.requestLine(request),
-                SecurityLogUtils.username(authentication),
-                SecurityLogUtils.roles(authentication),
-                authException.getMessage());
+        log.warn("[HTTP 401] {} {} | motivo={}",
+                request.getMethod(), request.getRequestURI(), authException.getMessage());
 
         ErrorResponse error = new ErrorResponse(
                 HttpStatus.UNAUTHORIZED.value(),

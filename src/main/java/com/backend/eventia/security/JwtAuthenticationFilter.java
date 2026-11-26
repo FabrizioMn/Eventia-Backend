@@ -57,7 +57,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     );
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
-                    log.info("[JWT] Token validado | sub={} | claim role={} | authorities(BD)={} | {} {}",
+                    log.debug("[JWT] Token validado | sub={} | claim role={} | authorities(BD)={} | {} {}",
                             userEmail, jwtUtils.extractRole(token), userDetails.getAuthorities(),
                             request.getMethod(), request.getRequestURI());
                 }

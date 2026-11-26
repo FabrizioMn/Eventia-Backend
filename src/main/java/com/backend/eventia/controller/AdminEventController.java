@@ -1,6 +1,7 @@
 package com.backend.eventia.controller;
 
 import com.backend.eventia.dto.event.EventSummaryResponseDto;
+import com.backend.eventia.model.enums.EventStatus;
 import com.backend.eventia.service.EventService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +12,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
@@ -23,11 +25,12 @@ public class AdminEventController {
 
     @GetMapping
     public ResponseEntity<Page<EventSummaryResponseDto>> findAll(
+            @RequestParam(required = false) EventStatus status,
             @PageableDefault(size = 10, sort = "date", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        log.debug("[AdminEventController] GET /api/admin/events - page={}, size={}",
-                pageable.getPageNumber(), pageable.getPageSize());
+        log.debug("[AdminEventController] GET /api/admin/events - status={}, page={}, size={}",
+                status, pageable.getPageNumber(), pageable.getPageSize());
 
-        return ResponseEntity.ok(eventService.findAll(true, pageable));
+        return ResponseEntity.ok(eventService.findAllForAdmin(status, pageable));
     }
 }

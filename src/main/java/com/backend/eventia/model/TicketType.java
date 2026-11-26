@@ -23,7 +23,7 @@ import java.time.LocalDateTime;
 @Builder
 public class TicketType {
 
-    public static final int DEFAULT_MAX_PER_PURCHASE = 10;
+    public static final int MAX_PER_PURCHASE = 5;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -46,11 +46,7 @@ public class TicketType {
 
     @Column(name = "max_per_purchase")
     @Builder.Default
-    private Integer maxPerPurchase = DEFAULT_MAX_PER_PURCHASE;
-
-    @Column(name = "is_presale", nullable = false)
-    @Builder.Default
-    private boolean isPresale = false;
+    private Integer maxPerPurchase = MAX_PER_PURCHASE;
 
     @Column(name = "sale_start_date")
     private LocalDate saleStartDate;

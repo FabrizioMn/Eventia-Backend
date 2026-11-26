@@ -25,11 +25,6 @@ public record TicketTypeRequestDto(
         @Positive(message = "La capacidad debe ser mayor a 0")
         Integer totalCapacity,
 
-        @Positive(message = "El límite de compra debe ser mayor a 0")
-        Integer maxPerPurchase,
-
-        Boolean isPresale,
-
         LocalDate saleStartDate,
 
         LocalDate saleEndDate

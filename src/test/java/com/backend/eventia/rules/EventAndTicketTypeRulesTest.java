@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -60,8 +61,10 @@ class EventAndTicketTypeRulesTest {
 
     private User organizerA;
     private User organizerB;
+    private User admin;
     private String tokenOrgA;
     private String tokenOrgB;
+    private String tokenAdmin;
     private Category activeCategory;
     private Category inactiveCategory;
 
@@ -73,8 +76,12 @@ class EventAndTicketTypeRulesTest {
         organizerB = TestUserFactory.createUser(
                 userRepository, passwordEncoder, "orgb-rules@test.com", "secret123", UserRole.ORGANIZER, true, "82000002"
         );
+        admin = TestUserFactory.createUser(
+                userRepository, passwordEncoder, "admin-event-rules@test.com", "secret123", UserRole.ADMIN, true, "82000003"
+        );
         tokenOrgA = jwtUtils.generateToken(organizerA);
         tokenOrgB = jwtUtils.generateToken(organizerB);
+        tokenAdmin = jwtUtils.generateToken(admin);
 
         activeCategory = categoryRepository.save(
                 Category.builder().name("Cat Activa").description("d").active(true).build()
@@ -214,7 +221,7 @@ class EventAndTicketTypeRulesTest {
         mockMvc.perform(post("/api/events/{eventId}/ticket-types", event.getId())
                         .header("Authorization", "Bearer " + tokenOrgA)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"Preventa\",\"zone\":\"Gen\",\"price\":40.0,\"totalCapacity\":20,"
+                        .content("{\"name\":\"Anticipada\",\"zone\":\"Gen\",\"price\":40.0,\"totalCapacity\":20,"
                                 + "\"saleStartDate\":\"" + start + "\",\"saleEndDate\":\"" + badEnd + "\"}"))
                 .andExpect(status().isBadRequest());
 
@@ -233,8 +240,6 @@ class EventAndTicketTypeRulesTest {
                 .price(80.0)
                 .totalCapacity(40)
                 .availableCapacity(10)
-                .maxPerPurchase(6)
-                .isPresale(false)
                 .active(true)
                 .event(event)
                 .build());
@@ -251,6 +256,91 @@ class EventAndTicketTypeRulesTest {
                         .header("Authorization", "Bearer " + tokenOrgA)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"ConVentas\",\"zone\":\"Platea\",\"price\":80.0,\"totalCapacity\":35}"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void organizadorNoPuedeAprobarPublicarEventoDirectamente() throws Exception {
+        Event event = eventRepository.save(Event.builder()
+                .title("Evento Moderación")
+                .description("d")
+                .date(LocalDate.now().plusDays(10))
+                .startTime(LocalTime.of(18, 0))
+                .endTime(LocalTime.of(20, 0))
+                .location("Lima")
+                .capacity(100)
+                .status(EventStatus.PENDING)
+                .active(true)
+                .category(activeCategory)
+                .organizer(organizerA)
+                .build());
+
+        // Organizador intenta publicar -> 403 Forbidden
+        mockMvc.perform(patch("/api/events/{id}/status", event.getId())
+                        .header("Authorization", "Bearer " + tokenOrgA)
+                        .param("status", "PUBLISHED"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void adminNoPuedePublicarEventoSinTarifas() throws Exception {
+        Event event = eventRepository.save(Event.builder()
+                .title("Evento Sin Tarifas")
+                .description("d")
+                .date(LocalDate.now().plusDays(10))
+                .startTime(LocalTime.of(18, 0))
+                .endTime(LocalTime.of(20, 0))
+                .location("Lima")
+                .capacity(100)
+                .status(EventStatus.PENDING)
+                .active(true)
+                .category(activeCategory)
+                .organizer(organizerA)
+                .build());
+
+        // Admin intenta publicar sin tarifas -> 400 Bad Request
+        mockMvc.perform(patch("/api/events/{id}/status", event.getId())
+                        .header("Authorization", "Bearer " + tokenAdmin)
+                        .param("status", "PUBLISHED"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void adminPuedeAprobarEventoConTarifasYFiltrarPorEstado() throws Exception {
+        Event event = eventRepository.save(Event.builder()
+                .title("Evento Aprobado")
+                .description("d")
+                .date(LocalDate.now().plusDays(10))
+                .startTime(LocalTime.of(18, 0))
+                .endTime(LocalTime.of(20, 0))
+                .location("Lima")
+                .capacity(100)
+                .status(EventStatus.PENDING)
+                .active(true)
+                .category(activeCategory)
+                .organizer(organizerA)
+                .build());
+
+        ticketTypeRepository.save(TicketType.builder()
+                .name("General")
+                .zone("General")
+                .price(50.0)
+                .totalCapacity(100)
+                .availableCapacity(100)
+                .active(true)
+                .event(event)
+                .build());
+
+        // Admin aprueba evento con tarifas -> 204 No Content
+        mockMvc.perform(patch("/api/events/{id}/status", event.getId())
+                        .header("Authorization", "Bearer " + tokenAdmin)
+                        .param("status", "PUBLISHED"))
+                .andExpect(status().isNoContent());
+
+        // Admin consulta eventos filtrando por estado -> 200 OK
+        mockMvc.perform(get("/api/admin/events")
+                        .header("Authorization", "Bearer " + tokenAdmin)
+                        .param("status", "PUBLISHED"))
                 .andExpect(status().isOk());
     }
 
