@@ -176,6 +176,10 @@ public class TicketServiceImpl implements TicketService {
             throw new IllegalArgumentException("El organizador del evento no está activo");
         }
 
+        if (event.getCategory() == null || !event.getCategory().isActive()) {
+            throw new IllegalArgumentException("La categoría del evento no está activa");
+        }
+
         LocalDateTime eventDateTime = LocalDateTime.of(event.getDate(), event.getStartTime());
         if (!eventDateTime.isAfter(LocalDateTime.now())) {
             throw new IllegalArgumentException("El evento ya no está disponible para la venta");
