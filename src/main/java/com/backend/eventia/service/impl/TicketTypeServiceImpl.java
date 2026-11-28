@@ -43,9 +43,10 @@ public class TicketTypeServiceImpl implements TicketTypeService {
 
         Event event = getEventOrThrow(eventId);
         boolean privileged = isAuthorizedToViewInactive(event);
+        boolean categoryActive = event.getCategory() == null || event.getCategory().isActive();
 
-        if (!privileged && (!event.isActive() || event.getStatus() != EventStatus.PUBLISHED)) {
-            log.warn("[TicketType] Intento no autorizado de consultar tarifas de evento no publicado o inactivo id={}", eventId);
+        if (!privileged && (!event.isActive() || event.getStatus() != EventStatus.PUBLISHED || !categoryActive)) {
+            log.warn("[TicketType] Intento no autorizado de consultar tarifas de evento no publicado, inactivo o con categoria inactiva id={}", eventId);
             throw new ResourceNotFoundException("No se encontró el evento con el id: " + eventId);
         }
 

@@ -47,10 +47,10 @@ public class EventServiceImpl implements EventService {
         log.debug("[Event] findAll(includeInactive={}, page={}, size={})",
                 includeInactive, pageable.getPageNumber(), pageable.getPageSize());
 
-        // Para el catálogo general, solo se listan eventos activos y publicados
+        // Para el catálogo general, solo se listan eventos activos, publicados y cuya categoría esté activa
         Page<Event> events = includeInactive
                 ? eventRepository.findAll(pageable)
-                : eventRepository.findByActiveTrueAndStatus(EventStatus.PUBLISHED, pageable);
+                : eventRepository.findByActiveTrueAndStatusAndCategoryActiveTrue(EventStatus.PUBLISHED, pageable);
 
         log.debug("[Event] findAll -> {} eventos encontrados en página {} (includeInactive={})",
                 events.getNumberOfElements(), pageable.getPageNumber(), includeInactive);
@@ -79,9 +79,11 @@ public class EventServiceImpl implements EventService {
         User organizer = getUserOrThrow(organizerEmail);
         validateOrganizerRole(organizer);
 
+        // Si includeInactive es false: solo eventos activos y no cancelados.
+        // Si includeInactive es true: todos los eventos (incluye inactivos y cancelados).
         Page<Event> events = includeInactive
                 ? eventRepository.findByOrganizerId(organizer.getId(), pageable)
-                : eventRepository.findByOrganizerIdAndActiveTrue(organizer.getId(), pageable);
+                : eventRepository.findByOrganizerIdAndActiveTrueAndStatusNot(organizer.getId(), EventStatus.CANCELLED, pageable);
 
         log.debug("[Event] findByOrganizer -> {} eventos propios encontrados", events.getNumberOfElements());
         return events.map(this::toSummaryDto);
@@ -94,9 +96,10 @@ public class EventServiceImpl implements EventService {
         Event event = getEventOrThrow(id);
 
         boolean organizerActive = event.getOrganizer() != null && event.getOrganizer().isActive();
-        if ((!event.isActive() || event.getStatus() != EventStatus.PUBLISHED || !organizerActive)
+        boolean categoryActive = event.getCategory() == null || event.getCategory().isActive();
+        if ((!event.isActive() || event.getStatus() != EventStatus.PUBLISHED || !organizerActive || !categoryActive)
                 && !isAuthorizedToViewUnpublished(event)) {
-            log.warn("[Event] Intento no autorizado de consultar evento no publicado o inactivo id={}", id);
+            log.warn("[Event] Intento no autorizado de consultar evento no publicado, inactivo o con categoria inactiva id={}", id);
             throw new ResourceNotFoundException("No se encontró el evento con el id: " + id);
         }
 
