@@ -121,6 +121,13 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Cloudinary SDK para carga y gestión de imágenes -->
+        <dependency>
+            <groupId>com.cloudinary</groupId>
+            <artifactId>cloudinary-http44</artifactId>
+            <version>1.39.0</version>
+        </dependency>
+
     </dependencies>
 
     <build>

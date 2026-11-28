@@ -93,6 +93,10 @@ public class SecurityConfig {
                     // Paneles de control
                     http.requestMatchers("/api/admin/**").hasRole("ADMIN");
                     http.requestMatchers("/api/organizer/**").hasAnyRole("ADMIN", "ORGANIZER");
+
+                    // Subida de imágenes multimedia (banners de eventos)
+                    http.requestMatchers(HttpMethod.POST, "/api/upload").hasAnyRole("ADMIN", "ORGANIZER");
+
                     http.anyRequest().authenticated();
                 })
                 .headers(h -> h.frameOptions(f -> f.sameOrigin()))
