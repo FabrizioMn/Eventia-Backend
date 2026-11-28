@@ -101,17 +101,23 @@ public class DataInitializer {
         Category tecnologia = getOrCreateCategory("Tecnología & Startups", "Conferencias, hackathons, foros tecnológicos y networking.");
 
         saveEvent("Illapu: 50 Años de Memoria", "Concierto por los 50 años de Illapu",
-                LocalDate.of(2026, 12, 5), "Estadio Nacional, Lima", 45000, conciertos, organizer, 120.0);
+                LocalDate.of(2026, 12, 5), "Estadio Nacional, Lima", 45000, conciertos, organizer, 120.0,
+                "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=80");
         saveEvent("Sunsets Sessions Costa Verde", "Festival al atardecer frente al mar",
-                LocalDate.of(2026, 12, 6), "Arena 1, San Miguel", 12000, festivales, organizer, 85.0);
+                LocalDate.of(2026, 12, 6), "Arena 1, San Miguel", 12000, festivales, organizer, 85.0,
+                "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80");
         saveEvent("La Ciudad y los Perros (Adaptación)", "Adaptación teatral de la novela",
-                LocalDate.of(2026, 11, 28), "Teatro Peruano Japonés", 800, teatro, organizer, 60.0);
+                LocalDate.of(2026, 11, 28), "Teatro Peruano Japonés", 800, teatro, organizer, 60.0,
+                "https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?auto=format&fit=crop&w=1200&q=80");
         saveEvent("Expo Sabor & Coctelería Andina", "Feria gastronómica con coctelería andina",
-                LocalDate.of(2026, 12, 14), "Jockey Club del Perú", 5000, gastronomia, organizer, 45.0);
+                LocalDate.of(2026, 12, 14), "Jockey Club del Perú", 5000, gastronomia, organizer, 45.0,
+                "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=80");
         saveEvent("Trap & Latin Flow Live Tour", "Gira de trap y latin flow",
-                LocalDate.of(2027, 1, 18), "Arena 1, Costa Verde", 15000, conciertos, organizer, 140.0);
+                LocalDate.of(2027, 1, 18), "Arena 1, Costa Verde", 15000, conciertos, organizer, 140.0,
+                "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&w=1200&q=80");
         saveEvent("Peru Tech Summit & Fintech 2027", "Cumbre de tecnología y fintech",
-                LocalDate.of(2027, 1, 25), "Centro de Convenciones 27 de Enero", 3000, tecnologia, organizer, 210.0);
+                LocalDate.of(2027, 1, 25), "Centro de Convenciones 27 de Enero", 3000, tecnologia, organizer, 210.0,
+                "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80");
 
         log.info("[DataInitializer] Eventos de ejemplo creados correctamente");
     }
@@ -128,7 +134,7 @@ public class DataInitializer {
     }
 
     private void saveEvent(String title, String description, LocalDate date, String location,
-                           int capacity, Category category, User organizer, double price) {
+                           int capacity, Category category, User organizer, double price, String bannerUrl) {
         Event event = eventRepository.save(Event.builder()
                 .title(title)
                 .description(description)
@@ -137,6 +143,7 @@ public class DataInitializer {
                 .endTime(LocalTime.of(23, 0))
                 .location(location)
                 .capacity(capacity)
+                .bannerUrl(bannerUrl)
                 .status(EventStatus.PUBLISHED)
                 .active(true)
                 .category(category)
